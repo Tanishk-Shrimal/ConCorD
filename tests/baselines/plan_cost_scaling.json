@@ -1,0 +1,56 @@
+{
+  "mode_sizes": {
+    "4": {
+      "baryon": {
+        "largest_value_bytes": 4096,
+        "logical_peak_live_bytes": 18944,
+        "scheduled_contraction_flops": 33024
+      },
+      "meson": {
+        "largest_value_bytes": 4096,
+        "logical_peak_live_bytes": 12800,
+        "scheduled_contraction_flops": 8736
+      },
+      "tetraquark": {
+        "largest_value_bytes": 1048576,
+        "logical_peak_live_bytes": 5242880,
+        "scheduled_contraction_flops": 11714560
+      }
+    },
+    "45": {
+      "baryon": {
+        "largest_value_bytes": 373248000,
+        "logical_peak_live_bytes": 399589200,
+        "scheduled_contraction_flops": 6433149856
+      },
+      "meson": {
+        "largest_value_bytes": 518400,
+        "logical_peak_live_bytes": 1041408,
+        "scheduled_contraction_flops": 1037344
+      },
+      "tetraquark": {
+        "largest_value_bytes": 16796160000,
+        "logical_peak_live_bytes": 18899862528,
+        "scheduled_contraction_flops": 4299839640000
+      }
+    },
+    "75": {
+      "baryon": {
+        "largest_value_bytes": 1728000000,
+        "logical_peak_live_bytes": 1847070000,
+        "scheduled_contraction_flops": 49621860256
+      },
+      "meson": {
+        "largest_value_bytes": 1440000,
+        "logical_peak_live_bytes": 2884608,
+        "scheduled_contraction_flops": 2880544
+      },
+      "tetraquark": {
+        "largest_value_bytes": 129600000000,
+        "logical_peak_live_bytes": 145806025728,
+        "scheduled_contraction_flops": 91549686600000
+      }
+    }
+  },
+  "scaling_schema_version": 1
+}

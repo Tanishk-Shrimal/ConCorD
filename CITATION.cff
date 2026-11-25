@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use ConCorD in published work, please cite it as below."
+title: "ConCorD: a compiler for constructing lattice QCD correlators in distillation"
+version: 1.0.0
+date-released: 2026-11-26
+license: MIT
+repository-code: "https://github.com/Tanishk-Shrimal/ConCorD"
+keywords:
+  - lattice QCD
+  - distillation
+  - Wick contractions
+  - correlation functions
+authors:
+  - family-names: Shrimal
+    given-names: Tanishk
+    orcid: "https://orcid.org/0009-0008-9568-0294"
+    affiliation: "The Institute of Mathematical Sciences, Chennai"
+  - family-names: Padmanath
+    given-names: M.
+    orcid: "https://orcid.org/0000-0001-6877-7578"
+    affiliation: "The Institute of Mathematical Sciences, Chennai"

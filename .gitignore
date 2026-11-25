@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Data files
+*.h5
+*.bin
+
+# Large datasets
+checks/
+checks/sharing/*.xml
+
+# Build outputs
+build/
+**/build/
+dist/
+
+# Native build artifacts
+CMakeFiles/
+CMakeCache.txt
+*.o
+*.a
+*.so
+*.d
+*.log
+
+# Generated documentation artifacts
+*.aux
+*.out
+*.toc
+docs/*.pdf
+
+# Generated JSON artifacts
+*.json
+!tests/baselines/*.json
+
+# Random data, plans and results of the examples
+examples/data/
+examples/*/*.concord
+examples/*/output_*.h5
+examples/*/*.html
+
+# Local lattice data (keep outside the repository)
+data/

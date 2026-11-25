@@ -1,0 +1,101 @@
+{
+  "comparison_schema_version": 2,
+  "mode_sizes": {
+    "4": {
+      "baryon": {
+        "component_strategies": [
+          "branch-1"
+        ],
+        "logical_peak_live_bytes": 18944,
+        "largest_transient_value_bytes": 4096,
+        "known_working_set_bytes": 23040,
+        "scheduled_contraction_flops": 29440,
+        "total_buffer_capacity_bytes": 18944
+      },
+      "meson": {
+        "component_strategies": [
+          "dynamic-programming"
+        ],
+        "logical_peak_live_bytes": 8704,
+        "largest_transient_value_bytes": 4096,
+        "known_working_set_bytes": 12800,
+        "scheduled_contraction_flops": 4128,
+        "total_buffer_capacity_bytes": 8704
+      },
+      "tetraquark": {
+        "component_strategies": [
+          "greedy"
+        ],
+        "logical_peak_live_bytes": 5242880,
+        "largest_transient_value_bytes": 1048576,
+        "known_working_set_bytes": 6606848,
+        "scheduled_contraction_flops": 11714560,
+        "total_buffer_capacity_bytes": 5558272
+      }
+    },
+    "45": {
+      "baryon": {
+        "component_strategies": [
+          "branch-1"
+        ],
+        "logical_peak_live_bytes": 28738800,
+        "largest_transient_value_bytes": 23328000,
+        "known_working_set_bytes": 53623024,
+        "scheduled_contraction_flops": 411229412,
+        "total_buffer_capacity_bytes": 30295024
+      },
+      "meson": {
+        "component_strategies": [
+          "dynamic-programming"
+        ],
+        "logical_peak_live_bytes": 1037312,
+        "largest_transient_value_bytes": 518400,
+        "known_working_set_bytes": 1555712,
+        "scheduled_contraction_flops": 518432,
+        "total_buffer_capacity_bytes": 1037312
+      },
+      "tetraquark": {
+        "component_strategies": [
+          "branch-1"
+        ],
+        "logical_peak_live_bytes": 18899862528,
+        "largest_transient_value_bytes": 16796160000,
+        "known_working_set_bytes": 35855224352,
+        "scheduled_contraction_flops": 1619452440000,
+        "total_buffer_capacity_bytes": 19059064352
+      }
+    },
+    "75": {
+      "baryon": {
+        "component_strategies": [
+          "branch-1"
+        ],
+        "logical_peak_live_bytes": 131130000,
+        "largest_transient_value_bytes": 108000000,
+        "known_working_set_bytes": 243451024,
+        "scheduled_contraction_flops": 3167303012,
+        "total_buffer_capacity_bytes": 135451024
+      },
+      "meson": {
+        "component_strategies": [
+          "dynamic-programming"
+        ],
+        "logical_peak_live_bytes": 2880512,
+        "largest_transient_value_bytes": 1440000,
+        "known_working_set_bytes": 4320512,
+        "scheduled_contraction_flops": 1440032,
+        "total_buffer_capacity_bytes": 2880512
+      },
+      "tetraquark": {
+        "component_strategies": [
+          "branch-1"
+        ],
+        "logical_peak_live_bytes": 145806025728,
+        "largest_transient_value_bytes": 129600000000,
+        "known_working_set_bytes": 276496020000,
+        "scheduled_contraction_flops": 20814006600000,
+        "total_buffer_capacity_bytes": 146896020000
+      }
+    }
+  }
+}

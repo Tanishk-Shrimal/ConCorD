@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside ConCorD</title>
+<style>
+/* Layout: one reading column (~46rem); wide diagrams scroll inside their own box on phones; steps separated by hairlines */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #18202b;
+  --muted: #566173;
+  --rule: #d8dee6;
+  --rule-strong: #9aa6b6;
+  --accent: #245c96;
+  --accent-soft: #e4edf7;
+  --u: #2a68c9;
+  --d: #c26d14;
+  --done: #2f7a4d;
+  --code-bg: #eceff4;
+  --col-soft: #e2f1e7;
+  --f-display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --surface: #18202a; --ink: #e4e8ee; --muted: #9ba6b6; --rule: #2a3440;
+    --rule-strong: #5d6b7d; --accent: #8db6ea; --accent-soft: #1c2b3d; --u: #74a5f0; --d: #eda25b;
+    --done: #7cc79a; --code-bg: #1d2530; --col-soft: #1b2f23; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #18202a; --ink: #e4e8ee; --muted: #9ba6b6; --rule: #2a3440;
+  --rule-strong: #5d6b7d; --accent: #8db6ea; --accent-soft: #1c2b3d; --u: #74a5f0; --d: #eda25b;
+  --done: #7cc79a; --code-bg: #1d2530; --col-soft: #1b2f23; color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 1rem/1.62 var(--f-body);
+}
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding-block: 2.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 3rem;
+}
+section { display: grid; gap: 1rem; min-width: 0; }
+section + section { border-top: 1px solid var(--rule); padding-top: 2.5rem; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.25; }
+h1 { font-size: 2.4rem; font-weight: 600; }
+h2 { font-size: 1.65rem; font-weight: 600; }
+h3 { font-size: 1.2rem; font-weight: 500; margin-top: 0.75rem; }
+p, ul, ol, dl { margin: 0; }
+ul, ol { padding-left: 1.3rem; display: grid; gap: 0.35rem; }
+.eyebrow {
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent);
+}
+.lede { font-size: 1.12rem; color: var(--muted); max-width: 40rem; }
+code, pre, .mono { font-family: var(--f-mono); }
+code { font-size: 0.88em; background: var(--code-bg); padding: 0.05em 0.3em; border-radius: 4px; }
+pre {
+  margin: 0; background: var(--code-bg); border-radius: 6px; padding: 0.9rem 1rem;
+  overflow-x: auto; font-size: 0.86rem; line-height: 1.55;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--muted); }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+/* roadmap */
+.roadmap { list-style: none; padding: 0; gap: 0; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+.roadmap li {
+  display: grid; grid-template-columns: 2rem 1fr auto; align-items: baseline; gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+}
+.roadmap li + li { border-top: 1px solid var(--rule); }
+.roadmap .n { font-family: var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.roadmap .t { min-width: 0; }
+.chip {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap;
+}
+.chip.done { color: var(--done); }
+.chip.next { color: var(--accent); }
+.chip.later { color: var(--muted); border-color: var(--rule-strong); }
+
+/* figures */
+figure { margin: 0.5rem 0; display: grid; gap: 0.5rem; min-width: 0; }
+figure svg { display: block; width: 100%; height: auto; color: var(--ink); }
+figcaption { font-size: 0.9rem; color: var(--muted); }
+.scroll { overflow-x: auto; }
+.scroll svg { min-width: 620px; }
+.pair { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+@media (min-width: 640px) { .pair { grid-template-columns: 1fr 1fr; } }
+.pair svg { max-width: 420px; margin: 0 auto; }
+svg text { fill: currentColor; font-family: var(--f-body); font-size: 12px; }
+svg .strong { font-weight: 600; font-size: 13px; }
+svg .small { font-size: 11px; fill: var(--muted); }
+svg .box { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1; }
+svg .key { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+svg .op { fill: var(--surface); stroke: var(--rule-strong); stroke-width: 1; }
+svg .arrow { stroke: currentColor; stroke-width: 1.3; fill: none; }
+svg .lu { stroke: var(--u); stroke-width: 2.6; fill: none; stroke-linecap: round; }
+svg .ld { stroke: var(--d); stroke-width: 2.6; fill: none; stroke-linecap: round; }
+svg .du { fill: var(--u); }
+svg .dd { fill: var(--d); }
+svg .sep { stroke: var(--rule); stroke-width: 1; }
+svg .kern { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+svg .spinbox { fill: var(--code-bg); stroke: var(--rule-strong); stroke-width: 1; }
+svg .ls { stroke: var(--muted); stroke-width: 1.8; stroke-dasharray: 3 3; fill: none; stroke-linecap: round; }
+svg .edge { stroke: var(--muted); stroke-width: 1.2; fill: none; }
+svg .mk { fill: var(--muted); }
+svg .head { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; fill: var(--accent); }
+svg .bar { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+svg .bar-dead { fill: var(--code-bg); stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 3 2; }
+svg .bar-out { fill: var(--surface); stroke: var(--done); stroke-width: 1.6; }
+svg .rowcell { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+svg .colcell { fill: var(--col-soft); stroke: var(--done); stroke-width: 1; }
+svg .hit { fill: none; stroke: var(--ink); stroke-width: 2.4; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { text-align: left; padding: 0.55rem 0.8rem; vertical-align: top; }
+th { font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em; color: var(--muted); border-bottom: 1px solid var(--rule); }
+tr + tr td { border-top: 1px solid var(--rule); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.group td { background: var(--code-bg); font-weight: 600; font-size: 0.85rem; }
+
+/* boxes */
+.note { background: var(--accent-soft); border-radius: 8px; padding: 1rem 1.1rem; display: grid; gap: 0.5rem; }
+.note .label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.calc {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 1rem 1.1rem;
+  display: grid; gap: 0.35rem; font-variant-numeric: tabular-nums;
+}
+.calc .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: baseline; }
+.calc .row .v { font-family: var(--f-mono); white-space: nowrap; }
+.calc .total { border-top: 1px solid var(--rule); padding-top: 0.4rem; font-weight: 600; }
+dl { display: grid; gap: 0.6rem; }
+dt { font-weight: 600; }
+dd { margin: 0.1rem 0 0; color: var(--ink); }
+.sub { display: grid; gap: 0.8rem; }
+.foot { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 1.2rem; }
+</style>
+</head>
+<body>
+<main>
+  <header style="display:grid; gap:1rem;">
+    <div class="eyebrow">ConCorD, one stage at a time</div>
+    <h1>Inside ConCorD</h1>
+    <p class="lede">What happens between the operators you write and the correlation matrix you get back. Each step is explained in plain words, with the physics kept and the programming left out. Written for people who know distillation but not the code.</p>
+    <ol class="roadmap" aria-label="The steps of this guide">
+      <li><span class="n">1</span><span class="t"><a href="#step-1">What you give ConCorD</a></span></li>
+      <li><span class="n">2</span><span class="t"><a href="#step-2">From operators to Wick terms</a></span></li>
+      <li><span class="n">3</span><span class="t"><a href="#step-3">From Wick terms to tensor networks</a></span></li>
+      <li><span class="n">4</span><span class="t"><a href="#step-4">Sharing across the whole matrix: the DAG</a></span></li>
+      <li><span class="n">5</span><span class="t"><a href="#step-5">Contraction order and shared partial products</a></span></li>
+      <li><span class="n">6</span><span class="t"><a href="#step-6">Scheduling and memory</a></span></li>
+      <li><span class="n">7</span><span class="t"><a href="#step-7">The plan file and <code>concord inspect</code></a></span></li>
+      <li><span class="n">8</span><span class="t"><a href="#step-8">The run: data, blocks, contraction</a></span></li>
+    </ol>
+  </header>
+
+  <section aria-labelledby="big-picture">
+    <div class="eyebrow">Overview</div>
+    <h2 id="big-picture">The big picture</h2>
+    <p>ConCorD works in two separate phases. <strong>Compiling</strong> turns your operators into a plan: everything that can be decided without data, from Wick contractions to memory layout. <strong>Running</strong> reads the lattice data and follows the plan. Steps 2 to 7 of this guide happen while compiling, step 8 while running.</p>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 840 262" role="img" aria-label="Operators and compile settings go into concord plan, which writes a plan file. concord inspect reads the plan file to show cost before any data. concord run loads the plan file, takes the run settings and data locations, and writes results.">
+          <defs>
+            <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <!-- row 1: compile -->
+          <rect class="box" x="20" y="22" width="170" height="50" rx="8"/>
+          <text class="strong" x="105" y="43" text-anchor="middle">operators.py</text>
+          <text class="small" x="105" y="61" text-anchor="middle">the physics</text>
+          <rect class="box" x="20" y="84" width="170" height="50" rx="8"/>
+          <text class="strong" x="105" y="105" text-anchor="middle">job.yaml: compile</text>
+          <text class="small" x="105" y="123" text-anchor="middle">N_v, order, memory</text>
+          <line class="arrow" x1="190" y1="47" x2="257" y2="66" marker-end="url(#ah1)"/>
+          <line class="arrow" x1="190" y1="109" x2="257" y2="90" marker-end="url(#ah1)"/>
+          <rect class="key" x="260" y="44" width="170" height="68" rx="8"/>
+          <text class="strong" x="345" y="72" text-anchor="middle">concord plan</text>
+          <text class="small" x="345" y="91" text-anchor="middle">compile once: steps 2–7</text>
+          <line class="arrow" x1="430" y1="78" x2="497" y2="78" marker-end="url(#ah1)"/>
+          <text class="small" x="464" y="70" text-anchor="middle">writes</text>
+          <rect class="box" x="500" y="53" width="130" height="50" rx="8"/>
+          <text class="strong" x="565" y="74" text-anchor="middle">plan file</text>
+          <text class="small" x="565" y="92" text-anchor="middle">.concord</text>
+          <line class="arrow" x1="630" y1="78" x2="687" y2="78" marker-end="url(#ah1)"/>
+          <text class="small" x="659" y="70" text-anchor="middle">reads</text>
+          <rect class="box" x="690" y="53" width="130" height="50" rx="8"/>
+          <text class="strong" x="755" y="74" text-anchor="middle">concord inspect</text>
+          <text class="small" x="755" y="92" text-anchor="middle">cost and memory</text>
+          <text class="small" x="755" y="122" text-anchor="middle">before any data</text>
+          <!-- row 2: run -->
+          <line class="arrow" x1="555" y1="103" x2="412" y2="176" marker-end="url(#ah1)"/>
+          <text class="small" x="500" y="150" text-anchor="start">loads</text>
+          <rect class="box" x="20" y="190" width="170" height="50" rx="8"/>
+          <text class="strong" x="105" y="211" text-anchor="middle">job.yaml: run + data</text>
+          <text class="small" x="105" y="229" text-anchor="middle">configs, times, files</text>
+          <line class="arrow" x1="190" y1="215" x2="257" y2="215" marker-end="url(#ah1)"/>
+          <text class="small" x="224" y="207" text-anchor="middle">reads</text>
+          <rect class="key" x="260" y="180" width="170" height="70" rx="8"/>
+          <text class="strong" x="345" y="209" text-anchor="middle">concord run</text>
+          <text class="small" x="345" y="228" text-anchor="middle">run many times: step 8</text>
+          <line class="arrow" x1="430" y1="215" x2="497" y2="215" marker-end="url(#ah1)"/>
+          <text class="small" x="464" y="207" text-anchor="middle">writes</text>
+          <rect class="box" x="500" y="190" width="130" height="50" rx="8"/>
+          <text class="strong" x="565" y="211" text-anchor="middle">results.h5</text>
+          <text class="small" x="565" y="229" text-anchor="middle">the correlators</text>
+        </svg>
+      </div>
+      <figcaption>The plan is made once and reused for every configuration and source time. <code>concord inspect</code> reads only the plan, so the cost is known before any data exist.</figcaption>
+    </figure>
+  </section>
+
+  <section id="step-1" aria-labelledby="h-step-1">
+    <div class="eyebrow">Step 1</div>
+    <h2 id="h-step-1">What you give ConCorD</h2>
+    <p>You give ConCorD two files. One describes the physics. The other gives the settings and says where the data are.</p>
+
+    <div class="sub">
+      <h3><code>operators.py</code>: the physics</h3>
+      <p>A short Python file with one function, called <code>build</code> by default, that returns the correlators you want. A complete example for the pion:</p>
+<pre><code>from concord_lqcd.core import Correlator, Operator, dbar, gamma5, u
+
+def build():
+    <span class="c"># d̄ γ5 u at one point "x"</span>
+    pion = Operator(dbar("x", "color", "s1") * gamma5("s1", "s2") * u("x", "color", "s2"))
+    return {"pion": Correlator(pion, pion.dagger())}</code></pre>
+      <dl>
+        <div><dt>Quark fields</dt><dd><code>u</code>, <code>d</code>, <code>s</code>, <code>c</code>, <code>b</code> (also <code>l</code>, a generic light quark, and <code>t</code>) and the barred versions. Each takes three labels: a position label, a color index name and a spin index name.</dd></div>
+        <div><dt>Spin and color tensors</dt><dd>γ matrices such as <code>gamma5</code>, named spin matrices such as <code>Cg5</code>, and <code>epsilon</code> for baryons.</dd></div>
+        <div><dt>Displaced quarks and helpers</dt><dd><code>transport</code>, <code>derivative</code> and <code>shift</code> move a quark along a path. <code>build_baryon_operator</code> builds a standard baryon in one line.</dd></div>
+      </dl>
+      <p><strong>Three rules</strong> cover how these pieces combine:</p>
+      <ul>
+        <li><strong>A repeated index name is summed over.</strong> In the pion, <code>color</code> appears twice, so the colors are contracted; <code>s1</code> and <code>s2</code> join the spins through γ5.</li>
+        <li><strong>Quarks with the same position label sit at the same point and share one momentum.</strong> One label gives a single hadron; two labels, such as <code>"x"</code> and <code>"y"</code>, give a two-hadron operator like Nπ or ππ. Momenta are given per label.</li>
+        <li><strong>Operators can be added and multiplied by numbers.</strong> Isospin combinations such as (π⁺π⁻ + π⁻π⁺ + π⁰π⁰)/√3 are written exactly like that.</li>
+      </ul>
+      <p>The function returns a <code>Correlator(sink, source)</code>, a three-point <code>Correlator(sink, current, source)</code>, a whole <code>CorrMatrix</code> of operators, or a dictionary of named correlators. The file contains <strong>no run settings</strong>: no times, no N_v, no data.</p>
+    </div>
+
+    <div class="sub">
+      <h3><code>job.yaml</code>: settings and data</h3>
+      <p>Two short sections label the file: <code>schema_version</code> (always 1) and <code>job</code>, a name that is stored in the plan and in the results. The other sections fall into two groups. The first group decides the plan. The second is only read when running.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Section</th><th>What it says</th></tr></thead>
+          <tbody>
+            <tr class="group"><td colspan="2">Decides the plan (used by <code>concord plan</code>)</td></tr>
+            <tr><td><code>operators</code></td><td>Which Python file and function to use</td></tr>
+            <tr><td><code>plan</code></td><td>Where to save the compiled plan</td></tr>
+            <tr><td><code>compile</code></td><td>N_v (<code>mode_size</code>, the number of eigenvectors), spin basis (must match your perambulators), precision, contraction order strategy, scheduling and buffer strategies, memory limits, and the optional Wick merging (step 4) with its flavor setting</td></tr>
+            <tr class="group"><td colspan="2">Used only when running (<code>concord run</code>)</td></tr>
+            <tr><td><code>lattice</code></td><td>The lattice size, for example 24³ × 64. The plan does not depend on it.</td></tr>
+            <tr><td><code>run</code></td><td>CPU or GPU, which configurations, which source and sink times, how many time slices at once, workers and threads</td></tr>
+            <tr><td><code>data</code></td><td>Where the eigenvectors and perambulators are: one file per flavor, the dataset name and the order of the axes. One detail reaches the plan: the built-in eigenvector reader declares the eigenvectors orthonormal, which lets step 3 remove trivial blocks. The file paths never matter.</td></tr>
+            <tr><td><code>output</code></td><td>The result file</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="label">Why the split matters</div>
+      <ul>
+        <li>You compile once and run many times, for every configuration and source time, with the same plan.</li>
+        <li>You can see the cost before you have any data.</li>
+        <li>Changing N_v, the spin basis or the contraction order needs a new plan. Changing configurations, times, the lattice size, workers or the device does not.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="step-2" aria-labelledby="h-step-2">
+    <div class="eyebrow">Step 2</div>
+    <h2 id="h-step-2">From operators to Wick terms</h2>
+    <p>ConCorD first works out which quark connects to which. This is pure bookkeeping: no N_v and no data are involved yet. It happens in four small steps.</p>
+
+    <div class="sub">
+      <h3>2a. Multiply out the sums</h3>
+      <p>An operator can be a sum. The ππ operator with I = 0 is (π⁺π⁻ + π⁻π⁺ + π⁰π⁰)/√3, and π⁰ is itself (ūγ5u − d̄γ5d)/√2. ConCorD multiplies everything out, so each matrix entry becomes a weighted sum of <strong>basis correlators</strong>, in which every operator is a single product of quark fields. Identical products are combined and products with zero weight are dropped. Operators are also written in one standard form, so two operators that mean the same thing look the same.</p>
+      <p>For the ππ matrix with 5 operators, the 25 entries turn into 676 basis correlators.</p>
+    </div>
+
+    <div class="sub">
+      <h3>2b. Pair the quarks</h3>
+      <p>For each basis correlator, ConCorD pairs every quark with an antiquark of the same flavor, in every possible way. Each pairing is one <strong>Wick term</strong>. Each pair becomes a propagator, and each term gets a sign from the order of the quark fields.</p>
+      <div class="pair">
+        <figure>
+          <svg viewBox="0 0 400 200" role="img" aria-label="The proton correlator has two Wick terms. In the first, each u quark at the sink joins the u antiquark directly below it. In the second, the two u lines cross. The d line is the same in both. The two terms have opposite signs.">
+            <line class="sep" x1="200" y1="10" x2="200" y2="190"/>
+            <!-- term 1 -->
+            <text class="strong" x="100" y="16" text-anchor="middle">Term 1, sign +</text>
+            <text class="small" x="18" y="62">t</text>
+            <text class="small" x="18" y="146">0</text>
+            <rect class="op" x="34" y="46" width="132" height="24" rx="12"/>
+            <rect class="op" x="34" y="130" width="132" height="24" rx="12"/>
+            <line class="lu" x1="60" y1="58" x2="60" y2="142"/>
+            <line class="ld" x1="100" y1="58" x2="100" y2="142"/>
+            <line class="lu" x1="140" y1="58" x2="140" y2="142"/>
+            <circle class="du" cx="60" cy="58" r="5"/><circle class="dd" cx="100" cy="58" r="5"/><circle class="du" cx="140" cy="58" r="5"/>
+            <circle class="du" cx="60" cy="142" r="5"/><circle class="dd" cx="100" cy="142" r="5"/><circle class="du" cx="140" cy="142" r="5"/>
+            <text x="60" y="39" text-anchor="middle">u</text><text x="100" y="39" text-anchor="middle">d</text><text x="140" y="39" text-anchor="middle">u</text>
+            <text x="60" y="172" text-anchor="middle">ū</text><text x="100" y="172" text-anchor="middle">d̄</text><text x="140" y="172" text-anchor="middle">ū</text>
+            <!-- term 2 -->
+            <text class="strong" x="300" y="16" text-anchor="middle">Term 2, sign −</text>
+            <rect class="op" x="234" y="46" width="132" height="24" rx="12"/>
+            <rect class="op" x="234" y="130" width="132" height="24" rx="12"/>
+            <line class="lu" x1="260" y1="58" x2="340" y2="142"/>
+            <line class="ld" x1="300" y1="58" x2="300" y2="142"/>
+            <line class="lu" x1="340" y1="58" x2="260" y2="142"/>
+            <circle class="du" cx="260" cy="58" r="5"/><circle class="dd" cx="300" cy="58" r="5"/><circle class="du" cx="340" cy="58" r="5"/>
+            <circle class="du" cx="260" cy="142" r="5"/><circle class="dd" cx="300" cy="142" r="5"/><circle class="du" cx="340" cy="142" r="5"/>
+            <text x="260" y="39" text-anchor="middle">u</text><text x="300" y="39" text-anchor="middle">d</text><text x="340" y="39" text-anchor="middle">u</text>
+            <text x="260" y="172" text-anchor="middle">ū</text><text x="300" y="172" text-anchor="middle">d̄</text><text x="340" y="172" text-anchor="middle">ū</text>
+          </svg>
+          <figcaption><strong>Proton to proton: 2 terms.</strong> The sink proton (top, time t) has quarks u, d, u; the source (bottom, time 0) has the antiquarks. In the second term the two u quarks swap partners, which flips the sign.</figcaption>
+        </figure>
+        <figure>
+          <svg viewBox="0 0 400 200" role="img" aria-label="The ubar u scalar correlator has two Wick terms. In the connected term, two lines run between time t and time 0 and cross. In the disconnected term, the quark and antiquark at each time join each other, forming one closed loop at time t and another at time 0, with nothing between them.">
+            <line class="sep" x1="200" y1="10" x2="200" y2="190"/>
+            <!-- connected -->
+            <text class="strong" x="100" y="16" text-anchor="middle">Connected</text>
+            <text class="small" x="18" y="62">t</text>
+            <text class="small" x="18" y="146">0</text>
+            <rect class="op" x="46" y="46" width="108" height="24" rx="12"/>
+            <rect class="op" x="46" y="130" width="108" height="24" rx="12"/>
+            <line class="lu" x1="130" y1="58" x2="70" y2="142"/>
+            <line class="lu" x1="130" y1="142" x2="70" y2="58"/>
+            <circle class="du" cx="70" cy="58" r="5"/><circle class="du" cx="130" cy="58" r="5"/>
+            <circle class="du" cx="70" cy="142" r="5"/><circle class="du" cx="130" cy="142" r="5"/>
+            <text x="70" y="39" text-anchor="middle">ū</text><text x="130" y="39" text-anchor="middle">u</text>
+            <text x="70" y="172" text-anchor="middle">ū</text><text x="130" y="172" text-anchor="middle">u</text>
+            <!-- disconnected -->
+            <text class="strong" x="300" y="16" text-anchor="middle">Disconnected (loops)</text>
+            <rect class="op" x="246" y="46" width="108" height="24" rx="12"/>
+            <rect class="op" x="246" y="130" width="108" height="24" rx="12"/>
+            <path class="lu" d="M270 58 C 270 104, 330 104, 330 58"/>
+            <path class="lu" d="M270 142 C 270 96, 330 96, 330 142"/>
+            <circle class="du" cx="270" cy="58" r="5"/><circle class="du" cx="330" cy="58" r="5"/>
+            <circle class="du" cx="270" cy="142" r="5"/><circle class="du" cx="330" cy="142" r="5"/>
+            <text x="270" y="39" text-anchor="middle">ū</text><text x="330" y="39" text-anchor="middle">u</text>
+            <text x="270" y="172" text-anchor="middle">ū</text><text x="330" y="172" text-anchor="middle">u</text>
+          </svg>
+          <figcaption><strong>ūu to ūu: 2 terms.</strong> A quark may also pair with the antiquark of its <em>own</em> operator. That closes a loop at one time slice. ConCorD keeps these terms instead of dropping them.</figcaption>
+        </figure>
+      </div>
+      <p>The number of terms follows from counting the ways to pair: for each flavor, (number of quarks of that flavor)!, multiplied over the flavors.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Correlator</th><th>Quarks per flavor</th><th>Wick terms</th></tr></thead>
+          <tbody>
+            <tr><td>π⁺ to π⁺</td><td>u: 1, d: 1</td><td class="num">1</td></tr>
+            <tr><td>proton to proton</td><td>u: 2, d: 1</td><td class="num">2! = 2</td></tr>
+            <tr><td>pp to pp</td><td>u: 4, d: 2</td><td class="num">4! × 2! = 48</td></tr>
+            <tr><td>triton</td><td>u: 4, d: 5</td><td class="num">4! × 5! = 2,880</td></tr>
+            <tr><td>⁴He</td><td>u: 6, d: 6</td><td class="num">6! × 6! = 518,400</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>u and d are always different flavors here,</strong> even when they use the same perambulator. The pairing never assumes isospin; isospin enters only through the weights you wrote in the operators.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Worked example: the NN matrix</h3>
+      <p>The two-nucleon ¹S₀ basis has <strong>17 operators</strong>. Each one is two protons with back-to-back momenta, p and −p, coupled with Cγ5. Swapping p and −p gives the same operator, so there is one operator per pair {p, −p}. For |p|² up to 4 (in units of 2π/L) that is 1 + 3 + 6 + 4 + 3 = 17.</p>
+      <p>A correlation matrix uses every operator once as the sink and once as the source, so it has 17 × 17 entries. Each entry pairs the 6 quarks of the sink (u u d u u d) with the 6 antiquarks of the source.</p>
+      <div class="calc" aria-label="Counting the Wick terms of the NN matrix">
+        <div class="row"><span>Entries: 17 sink operators × 17 source operators</span><span class="v">289</span></div>
+        <div class="row"><span>Terms per entry: 4 u quarks (4! ways) × 2 d quarks (2! ways)</span><span class="v">48</span></div>
+        <div class="row total"><span>Wick terms in the matrix</span><span class="v">289 × 48 = 13,872</span></div>
+      </div>
+      <p>The deuteron channel ³S₁ uses (pn − np)/√2, a sum of two products. Each entry therefore has 2 × 2 = 4 basis correlators, each with 3! × 3! = 36 terms. That gives 144 terms per entry and 289 × 144 = 41,616 for the matrix.</p>
+    </div>
+
+    <div class="sub">
+      <h3>2c. Contract each basis correlator once</h3>
+      <p>ConCorD remembers every basis correlator it has contracted. If exactly the same one turns up again (same operators, same momenta), its Wick terms are reused. In practice this rarely happens within one matrix, because every entry carries its own momenta: in the ππ, Nπ and NN matrices we tested, every basis correlator was different. The sharing that matters for the cost comes later, in step 4.</p>
+    </div>
+
+    <div class="sub">
+      <h3>2d. Write each term as quark lines</h3>
+      <p>Each Wick term is then stored as one record, which the code calls the <em>Physics IR</em>. It holds:</p>
+      <ul>
+        <li><strong>The quark lines.</strong> Each line has a quark end and an antiquark end. Each end records which operator, position, color and spin index it belongs to, any transport or derivative applied there, and whether that end is smeared (distillation) or a point.</li>
+        <li><strong>The spin and color tensors</strong> (γ matrices, Cγ5, ε) and any gauge links, which tie the quarks of one hadron together.</li>
+        <li><strong>The momentum</strong> of each position label.</li>
+        <li><strong>One number:</strong> the weight from step 2a times the sign from step 2b.</li>
+      </ul>
+      <p>So each record is a small graph of how the quarks connect: the quark fields are the points, the quark lines and the spin and color tensors join them. The NN ¹S₀ matrix gives 13,872 such records.</p>
+      <p>These records exist only while compiling. The plan file does not keep them; it keeps the result of the next steps, which is much more compact.</p>
+    </div>
+
+    <div class="note">
+      <div class="label">Still to come for these terms</div>
+      <p>Some Wick terms turn out to be identical apart from their sign, and cancel. ConCorD only finds that in step 4, when it compares everything across the whole matrix. Step 3 first turns each record into tensors that can actually be computed: perambulators, distillation kernels and spin matrices.</p>
+    </div>
+  </section>
+
+  <section id="step-3" aria-labelledby="h-step-3">
+    <div class="eyebrow">Step 3</div>
+    <h2 id="h-step-3">From Wick terms to tensor networks</h2>
+    <p>Step 2 said which quark connects to which. Step 3 says what to multiply. Each Wick term becomes a small <strong>tensor network</strong>: a few numerical arrays joined by shared indices. This is where distillation, the eigenvectors and N_v come in.</p>
+
+    <div class="sub">
+      <h3>Why distillation splits the work this way</h3>
+      <p>In distillation every quark field is smeared with V V†, where V holds the N_v Laplacian eigenvectors on one time slice. V acts on color and space but never on spin. That suggests a natural split into three kinds of pieces:</p>
+      <ul>
+        <li>the <strong>color and space sums</strong> of each hadron, done once per time slice;</li>
+        <li>the <strong>propagation</strong> of each quark from one time to another;</li>
+        <li>the <strong>spin structure</strong>, which is just small 4 × 4 matrices.</li>
+      </ul>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tensor</th><th>What it is</th><th>Indices</th><th>Size</th></tr></thead>
+          <tbody>
+            <tr><td>Baryon block B(t)</td><td>ε<sub>abc</sub> Σ<sub>x</sub> e<sup>−ip·x</sup> V<sub>a</sub> V<sub>b</sub> V<sub>c</sub>: color and space summed, momentum phase and any quark displacement included</td><td>3 eigenvector indices</td><td class="num">N_v³</td></tr>
+            <tr><td>Meson block Φ(t)</td><td>Σ<sub>x</sub> e<sup>−ip·x</sup> V† (displacement) V</td><td>2 eigenvector indices</td><td class="num">N_v²</td></tr>
+            <tr><td>Perambulator τ<sub>f</sub>(t′, t)</td><td>V†(t′) M<sub>f</sub>⁻¹ V(t) for flavor f: one per quark line</td><td>eigenvector and spin index at each end</td><td class="num">(4 N_v)²</td></tr>
+            <tr><td>Spin matrix</td><td>γ matrices, Cγ5, projectors</td><td>2 spin indices</td><td class="num">4 × 4</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3>The proton as a network</h3>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 700 330" role="img" aria-label="One proton Wick term as a tensor network. The baryon block at time t connects through three eigenvector-index lines to three perambulators, one d and two u. Each perambulator connects through three more eigenvector-index lines to the baryon block at time 0. Spin lines join the d and one u perambulator to a C gamma 5 matrix at each end. The third perambulator's spin stays open at both ends.">
+            <line class="lu" x1="20" y1="40" x2="52" y2="40"/>
+            <text class="small" x="60" y="44">eigenvector index, N_v values</text>
+            <line class="ls" x1="20" y1="64" x2="52" y2="64"/>
+            <text class="small" x="60" y="68">spin index, 4 values</text>
+            <text class="small" x="20" y="92">line color: u blue, d orange</text>
+            <!-- blocks -->
+            <rect class="kern" x="300" y="20" width="200" height="44" rx="8"/>
+            <text class="strong" x="400" y="38" text-anchor="middle">baryon block B(t)</text>
+            <text class="small" x="400" y="55" text-anchor="middle">N_v × N_v × N_v</text>
+            <rect class="kern" x="300" y="272" width="200" height="44" rx="8"/>
+            <text class="strong" x="400" y="290" text-anchor="middle">baryon block B̄(0)</text>
+            <text class="small" x="400" y="307" text-anchor="middle">N_v × N_v × N_v</text>
+            <!-- mode lines -->
+            <line class="ld" x1="350" y1="64" x2="290" y2="150"/>
+            <line class="lu" x1="400" y1="64" x2="400" y2="150"/>
+            <line class="lu" x1="450" y1="64" x2="510" y2="150"/>
+            <line class="ld" x1="290" y1="186" x2="350" y2="272"/>
+            <line class="lu" x1="400" y1="186" x2="400" y2="272"/>
+            <line class="lu" x1="510" y1="186" x2="450" y2="272"/>
+            <!-- spin lines -->
+            <line class="ls" x1="320" y1="150" x2="342" y2="122"/>
+            <line class="ls" x1="372" y1="150" x2="362" y2="122"/>
+            <line class="ls" x1="320" y1="186" x2="342" y2="214"/>
+            <line class="ls" x1="372" y1="186" x2="362" y2="214"/>
+            <line class="ls" x1="548" y1="160" x2="588" y2="140"/>
+            <line class="ls" x1="548" y1="176" x2="588" y2="196"/>
+            <text class="small" x="594" y="144">open spin at t</text>
+            <text class="small" x="594" y="200">open spin at 0</text>
+            <!-- spin matrices -->
+            <rect class="spinbox" x="332" y="98" width="40" height="24" rx="4"/>
+            <text x="352" y="114" text-anchor="middle">Cγ5</text>
+            <rect class="spinbox" x="332" y="214" width="40" height="24" rx="4"/>
+            <text x="352" y="230" text-anchor="middle">Cγ5</text>
+            <!-- perambulators -->
+            <rect class="box" x="252" y="150" width="76" height="36" rx="8"/>
+            <text class="strong" x="290" y="173" text-anchor="middle">τ_d</text>
+            <rect class="box" x="362" y="150" width="76" height="36" rx="8"/>
+            <text class="strong" x="400" y="173" text-anchor="middle">τ_u</text>
+            <rect class="box" x="472" y="150" width="76" height="36" rx="8"/>
+            <text class="strong" x="510" y="173" text-anchor="middle">τ_u</text>
+          </svg>
+        </div>
+        <figcaption>One of the proton's two Wick terms. Every line is an index. A line between two tensors is summed over; a line that ends in the open is an index of the result, here the proton's spin at each end. The real graph has 10 tensors: 2 blocks, 3 perambulators and 5 spin matrices. The drawing leaves out three γ4 matrices that come from taking the dagger of the source operator.</figcaption>
+      </figure>
+      <p>Larger systems have the same three kinds of pieces, only more of them:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>One Wick term of</th><th>Blocks</th><th>Perambulators</th><th>Spin matrices</th><th>Tensors</th></tr></thead>
+          <tbody>
+            <tr><td>proton</td><td class="num">2</td><td class="num">3</td><td class="num">5</td><td class="num">10</td></tr>
+            <tr><td>two nucleons</td><td class="num">4</td><td class="num">6</td><td class="num">12</td><td class="num">22</td></tr>
+            <tr><td>triton</td><td class="num">6</td><td class="num">9</td><td class="num">17</td><td class="num">32</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h3>Things to notice</h3>
+      <ul>
+        <li><strong>No times appear in the network.</strong> A perambulator is "from the source operator to the sink operator", not "from time 0 to time 12". The times are filled in when running, so one network serves every source and sink time.</li>
+        <li><strong>Loops need perambulators from a time slice back to itself.</strong> A loop at time t uses τ(t, t), so loop terms need perambulators from every time slice, not only from the source.</li>
+        <li><strong>Trivial blocks are removed.</strong> A meson block with no momentum and no displacement is V†V, which is the unit matrix when the eigenvectors are orthonormal. When you declare that (the built-in eigenvector reader does), ConCorD drops the block and joins its two lines.</li>
+        <li><strong>Point currents</strong> in three-point functions are folded into generalized perambulators that you supply, so they do not appear as separate blocks.</li>
+      </ul>
+    </div>
+
+    <div class="note">
+      <div class="label">Still to come for these networks</div>
+      <p>Across a whole matrix, many of these networks are identical, or share identical pieces. Step 4 cuts each Wick term's graph into its connected parts and keeps each distinct part only once. That collection is the DAG.</p>
+    </div>
+  </section>
+
+  <section id="step-4" aria-labelledby="h-step-4">
+    <div class="eyebrow">Step 4</div>
+    <h2 id="h-step-4">Sharing across the whole matrix: the DAG</h2>
+    <p>After step 3, every Wick term has its own private network. Many of them are the same, or are built from the same parts. Step 4 finds this and stores each thing once. The result is a <strong>DAG</strong>.</p>
+
+    <div class="sub">
+      <h3>What a DAG is</h3>
+      <p>DAG stands for directed acyclic graph. Arrows run from what is needed to what uses it, and nothing depends on itself. Unlike a tree, a node may feed several users. That is exactly what sharing looks like: one network computed once, used by several terms.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Three kinds of sharing</h3>
+      <ul>
+        <li><strong>Input tensors.</strong> Every perambulator, block and spin matrix is stored once, however often it is used. There is one perambulator per flavor; which time slices it connects follows from where it sits in a network.</li>
+        <li><strong>Networks.</strong> Each Wick term's graph is cut into its connected parts. Two parts count as the same when they use the same inputs, connected in the same way, at the same operators, whatever the index names. Each distinct part is stored once.</li>
+        <li><strong>Whole terms.</strong> Within one correlator, terms made of the same networks are added together. If their coefficients cancel exactly, the term disappears. This is where cancellation happens.</li>
+      </ul>
+    </div>
+
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 760 372" role="img" aria-label="The DAG of the sigma correlator. Two perambulators, u and d, feed six networks: a connected u network, a u loop at t, a u loop at 0, a d loop at t, a d loop at 0 and a connected d network. Six Wick terms use them: minus one half times the connected u network, plus one half times u loop at t times u loop at 0, plus one half times u loop at t times d loop at 0, plus one half times d loop at t times u loop at 0, plus one half times d loop at t times d loop at 0, and minus one half times the connected d network. Each of the four loop networks is used by two terms. The six terms add up to the correlator.">
+          <defs>
+            <marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path class="mk" d="M0 0 L10 5 L0 10 z"/>
+            </marker>
+          </defs>
+          <text class="head" x="70" y="22" text-anchor="middle">INPUTS</text>
+          <text class="head" x="260" y="22" text-anchor="middle">NETWORKS</text>
+          <text class="head" x="500" y="22" text-anchor="middle">WICK TERMS</text>
+          <text class="head" x="690" y="22" text-anchor="middle">CORRELATOR</text>
+          <!-- edges: inputs to networks -->
+          <line class="edge" x1="115" y1="116" x2="187" y2="60" marker-end="url(#ah4)"/>
+          <line class="edge" x1="115" y1="116" x2="187" y2="116" marker-end="url(#ah4)"/>
+          <line class="edge" x1="115" y1="116" x2="187" y2="172" marker-end="url(#ah4)"/>
+          <line class="edge" x1="115" y1="284" x2="187" y2="228" marker-end="url(#ah4)"/>
+          <line class="edge" x1="115" y1="284" x2="187" y2="284" marker-end="url(#ah4)"/>
+          <line class="edge" x1="115" y1="284" x2="187" y2="340" marker-end="url(#ah4)"/>
+          <!-- edges: networks to terms -->
+          <line class="edge" x1="330" y1="60" x2="427" y2="60" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="116" x2="427" y2="116" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="116" x2="427" y2="172" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="172" x2="427" y2="116" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="172" x2="427" y2="228" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="228" x2="427" y2="228" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="228" x2="427" y2="284" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="284" x2="427" y2="172" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="284" x2="427" y2="284" marker-end="url(#ah4)"/>
+          <line class="edge" x1="330" y1="340" x2="427" y2="340" marker-end="url(#ah4)"/>
+          <!-- edges: terms to correlator -->
+          <line class="edge" x1="570" y1="60" x2="637" y2="194" marker-end="url(#ah4)"/>
+          <line class="edge" x1="570" y1="116" x2="637" y2="196" marker-end="url(#ah4)"/>
+          <line class="edge" x1="570" y1="172" x2="637" y2="198" marker-end="url(#ah4)"/>
+          <line class="edge" x1="570" y1="228" x2="637" y2="202" marker-end="url(#ah4)"/>
+          <line class="edge" x1="570" y1="284" x2="637" y2="204" marker-end="url(#ah4)"/>
+          <line class="edge" x1="570" y1="340" x2="637" y2="206" marker-end="url(#ah4)"/>
+          <!-- inputs -->
+          <rect class="box" x="25" y="99" width="90" height="34" rx="8"/>
+          <text class="strong" x="70" y="121" text-anchor="middle">τ_u</text>
+          <rect class="box" x="25" y="267" width="90" height="34" rx="8"/>
+          <text class="strong" x="70" y="289" text-anchor="middle">τ_d</text>
+          <!-- networks -->
+          <rect class="box" x="190" y="43" width="140" height="34" rx="8"/>
+          <text x="200" y="64"><tspan class="strong">Xu</tspan>  u connected</text>
+          <rect class="key" x="190" y="99" width="140" height="34" rx="8"/>
+          <text x="200" y="120"><tspan class="strong">Lu(t)</tspan>  u loop at t</text>
+          <text class="small" x="322" y="120" text-anchor="end">×2</text>
+          <rect class="key" x="190" y="155" width="140" height="34" rx="8"/>
+          <text x="200" y="176"><tspan class="strong">Lu(0)</tspan>  u loop at 0</text>
+          <text class="small" x="322" y="176" text-anchor="end">×2</text>
+          <rect class="key" x="190" y="211" width="140" height="34" rx="8"/>
+          <text x="200" y="232"><tspan class="strong">Ld(t)</tspan>  d loop at t</text>
+          <text class="small" x="322" y="232" text-anchor="end">×2</text>
+          <rect class="key" x="190" y="267" width="140" height="34" rx="8"/>
+          <text x="200" y="288"><tspan class="strong">Ld(0)</tspan>  d loop at 0</text>
+          <text class="small" x="322" y="288" text-anchor="end">×2</text>
+          <rect class="box" x="190" y="323" width="140" height="34" rx="8"/>
+          <text x="200" y="344"><tspan class="strong">Xd</tspan>  d connected</text>
+          <!-- terms -->
+          <rect class="box" x="430" y="43" width="140" height="34" rx="8"/>
+          <text x="500" y="64" text-anchor="middle">−½ Xu</text>
+          <rect class="box" x="430" y="99" width="140" height="34" rx="8"/>
+          <text x="500" y="120" text-anchor="middle">+½ Lu(t) · Lu(0)</text>
+          <rect class="box" x="430" y="155" width="140" height="34" rx="8"/>
+          <text x="500" y="176" text-anchor="middle">+½ Lu(t) · Ld(0)</text>
+          <rect class="box" x="430" y="211" width="140" height="34" rx="8"/>
+          <text x="500" y="232" text-anchor="middle">+½ Ld(t) · Lu(0)</text>
+          <rect class="box" x="430" y="267" width="140" height="34" rx="8"/>
+          <text x="500" y="288" text-anchor="middle">+½ Ld(t) · Ld(0)</text>
+          <rect class="box" x="430" y="323" width="140" height="34" rx="8"/>
+          <text x="500" y="344" text-anchor="middle">−½ Xd</text>
+          <!-- correlator -->
+          <rect class="kern" x="640" y="178" width="100" height="44" rx="8"/>
+          <text class="strong" x="690" y="197" text-anchor="middle">C_σσ</text>
+          <text class="small" x="690" y="213" text-anchor="middle">sum of 6 terms</text>
+        </svg>
+      </div>
+      <figcaption>The DAG that ConCorD builds for σ = (ūu + d̄d)/√2 at zero momentum. Six Wick terms need ten networks, but only six are different: each loop network (shaded, ×2) is shared by two terms. The connected terms carry −½ and the two-loop terms +½. The three spin matrices, also shared inputs, are left out of the drawing. The same τ_u feeds the loops at t, the loops at 0 and the connected network; which time slices it connects is set when running.</figcaption>
+    </figure>
+
+    <div class="sub">
+      <h3>What sharing finds in real matrices</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix</th><th>Wick terms, after combining</th><th>Network uses, distinct</th><th>Input tensor uses, distinct</th></tr></thead>
+          <tbody>
+            <tr><td>σ, 1 operator</td><td class="num">6 → 6</td><td class="num">10 → 6</td><td class="num">36 → 5</td></tr>
+            <tr><td>proton, 1 operator</td><td class="num">2 → 2</td><td class="num">2 → 2</td><td class="num">20 → 7</td></tr>
+            <tr><td>ππ I = 0, 2 operators</td><td class="num">286 → 122</td><td class="num">622 → 52</td><td class="num">3,204 → 7</td></tr>
+            <tr><td>ππ I = 0, 5 operators</td><td class="num">3,718 → 3,002</td><td class="num">8,266 → 1,276</td><td class="num">54,564 → 31</td></tr>
+            <tr><td>NN ¹S₀, 17 operators</td><td class="num">13,872 → 13,872</td><td class="num">13,872 → 13,872</td><td class="num">305,184 → 71</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Mesons with loops share a lot: the same loop at one time slice appears in many terms. The NN matrix shares nothing at this level. Each of its terms is one connected network, and all 13,872 differ in momenta or wiring. They still contain identical <em>parts</em>, such as the same two baryon blocks joined by the same perambulator, but finding those needs a contraction order. That is step 5.</p>
+    </div>
+
+    <div class="sub">
+      <h3>What the plan keeps</h3>
+      <p>This DAG replaces the per-term records of step 2. The plan file stores the distinct inputs, the distinct networks, and for every correlator the list of terms: a coefficient times a product of networks.</p>
+    </div>
+
+    <div class="note">
+      <div class="label">Optional: merging terms that give the same numbers</div>
+      <p>Some terms are different networks but give the same numbers, and the comparison above cannot see it. In baryon systems, terms can be related by the antisymmetry of the blocks or by identities between spin matrices. And u and d are different flavors in all of the above, so Lu(t) and Ld(t) are different networks even when they use the same perambulator data. If you switch on Wick merging (<code>compile.wick_aggregation.enabled: true</code>), ConCorD proves such equalities exactly and merges the terms right after this step. Declaring u and d numerically equal (<code>compile.numerical_flavor_groups: [[u, d]]</code>) lets it merge the u and d terms too; ConCorD accepts this only if both flavors read the same perambulator files. For NN ¹S₀ with one operator, merging alone turns 48 terms into 16. For the 18-operator ππ matrix, merging with u = d cuts the number of distinct contraction steps (step 5) by 8.6 times. It is off by default.</p>
+    </div>
+  </section>
+
+  <section id="step-5" aria-labelledby="h-step-5">
+    <div class="eyebrow">Step 5</div>
+    <h2 id="h-step-5">Contraction order and shared partial products</h2>
+    <p>Each network from step 4 is still one large multiplication of up to 32 tensors (10 for one proton, 22 for two nucleons, 32 for three). It is computed as a sequence of <strong>pairwise steps</strong>: multiply two tensors, sum over the indices they share, keep the result, repeat. A network of n tensors takes n − 1 steps. This step has two parts: choosing the order of the steps in each network, and then finding the steps that several networks have in common.</p>
+
+    <div class="sub">
+      <h3>5a. What one step costs</h3>
+      <p>A step costs one multiply and one add for every combination of values of all the indices involved, summed or not. What it keeps is one number for every combination of the indices that stay open. An eigenvector index has N_v values (32 in all the examples here), a spin index 4. So every eigenvector index left open multiplies both the memory and the cost of the next steps by 32.</p>
+      <div class="calc" aria-label="Two example step costs">
+        <div class="row"><span>Spin matrix × perambulator: indices 4, 4, 32, 32, 4</span><span class="v">2 × 65,536 = 1.3 × 10⁵</span></div>
+        <div class="row"><span>Baryon block × (spin matrix · perambulator): indices 32, 32, 32, 32, 4, 4</span><span class="v">2 × 1.7 × 10⁷ = 3.4 × 10⁷</span></div>
+      </div>
+      <p>These are the compiler's own estimates. Real complex arithmetic takes about four times more operations, the same factor for every order, so the comparisons below are not affected. All numbers on this page are for one time slice.</p>
+    </div>
+
+    <div class="sub">
+      <h3>5b. One network, two orders</h3>
+      <p>The proton correlator has two networks, one for each Wick term of step 2. Each has 10 tensors: the sink block B(t), the source block B̄(0), three perambulators (u, d, u) and five spin matrices Γ. Any order gives the same answer. Here are two orders for one of the two networks.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Greedy order: joins</th><th>Numbers kept</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1–5</td><td>spin matrices onto the three perambulators, Γ·Γ</td><td class="num">16 to 16,384</td><td class="num">≤ 1.3 × 10⁵ each</td></tr>
+            <tr><td class="num">6</td><td>B(t) with one u perambulator</td><td class="num">524,288</td><td class="num">3.4 × 10⁷</td></tr>
+            <tr><td class="num">7</td><td>that with the d perambulator, summing only one index</td><td class="num"><strong>8,388,608</strong></td><td class="num"><strong>5.4 × 10⁸</strong></td></tr>
+            <tr><td class="num">8</td><td>that with B̄(0)</td><td class="num">262,144</td><td class="num"><strong>5.4 × 10⁸</strong></td></tr>
+            <tr><td class="num">9</td><td>the rest, leaving the 4 × 4 spin matrix of the correlator</td><td class="num">16</td><td class="num">5.2 × 10⁵</td></tr>
+            <tr class="group"><td></td><td>Total</td><td class="num">largest 8.4 million</td><td class="num">1.1 × 10⁹</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Exact order: joins</th><th>Numbers kept</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1–4</td><td>three source spin matrices, then the d perambulator, then the sink Γ</td><td class="num">16 to 16,384</td><td class="num">≤ 1.3 × 10⁵ each</td></tr>
+            <tr><td class="num">5</td><td>that with B̄(0)</td><td class="num">524,288</td><td class="num">3.4 × 10⁷</td></tr>
+            <tr><td class="num">6</td><td>that with a u perambulator, summing three indices at once</td><td class="num">32,768</td><td class="num">3.4 × 10⁷</td></tr>
+            <tr><td class="num">7</td><td>that with B(t)</td><td class="num">1,024</td><td class="num">2.1 × 10⁶</td></tr>
+            <tr><td class="num">8–9</td><td>the other u perambulator, the last Γ</td><td class="num">16</td><td class="num">3.3 × 10⁴</td></tr>
+            <tr class="group"><td></td><td>Total</td><td class="num">largest 524,288</td><td class="num">7.0 × 10⁷</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The exact order is a single chain: each step adds one more of the original tensors, and it never holds more than five open indices (three eigenvector, two spin). The greedy order joins the d perambulator to the sink side by summing only one index, which leaves seven open: three eigenvector and four spin indices, 8.4 million numbers, 134 MB in double precision. That step and the next each run over four eigenvector and four spin indices at once, 5.4 × 10⁸ each, so this network costs 16 times more than it needs to.</p>
+      <p>Greedy did not have to do this, even by its own rule. At its step 7, joining B̄(0) to either of the two spin-and-perambulator products would have grown memory by 0.48 million numbers, against 7.8 million for the pair it took. To stay fast it keeps only one candidate partner for each tensor, and those partners had already been used. On the other proton network greedy is fine: 2.0 × 10⁸, the same as the exact order. So how well greedy does depends on the shape of each network, not only on its size. A bad order also costs memory: for the whole proton correlator the greedy plan needs 154 MB of buffers, the exact one 18 MB.</p>
+    </div>
+
+    <div class="sub">
+      <h3>5c. The methods</h3>
+      <p>ConCorD chooses an order for each distinct network on its own, using the opt_einsum library. You pick the method with <code>compile.contraction.strategy</code>:</p>
+      <ul>
+        <li><strong>greedy</strong> (default): one fast pass, as above. Always the same result for the same input.</li>
+        <li><strong>auto</strong>: an exact search up to 4 tensors, short branching searches up to 14, greedy above. For NN and anything larger it is greedy.</li>
+        <li><strong>dynamic-programming</strong>: the exact cheapest order of each network (strictly, among orders that only ever join tensors sharing an index). The search time grows quickly with the number of tensors.</li>
+        <li><strong>auto-hq</strong>: exact up to 16 tensors. Above 16 it keeps the best of 128 randomized greedy runs. Every compile finds the same cost per network, but several orders can tie at that cost, and which one comes back depends on Python's string hashing, which changes from process to process. The tied orders share steps differently (5d), so for NN ¹S₀ with one operator the whole plan came out between 1.4 and 2.0 × 10¹⁰ FLOPs in our compiles. Setting <code>PYTHONHASHSEED</code> makes it repeatable. A run always uses the saved plan, so the results are not affected.</li>
+        <li><strong>reuse-aware</strong>: builds the whole plan four times, with greedy, dynamic-programming and two branching searches, using one method for every network each time. Each version is taken through sharing (5d), scheduling and buffers (step 6), and the one with the fewest FLOPs is kept, as long as it needs no more memory than the greedy plan, or than your memory limit. If any network has more than 12 tensors, it builds only the greedy version.</li>
+        <li><strong>adaptive</strong>: saves the greedy plan. When a run starts, it also builds the reuse-aware plan from the same DAG, times both on made-up data on the run's device, remembers the timing for later runs, and uses the faster plan. If the two plans are the same, there is nothing to time.</li>
+      </ul>
+    </div>
+
+    <div class="sub">
+      <h3>5d. When two steps are the same</h3>
+      <p>Once every network has its order, ConCorD compares every step across all networks. Two steps count as the same when:</p>
+      <ul>
+        <li>their two inputs are the same. For a tensor that means the same data in the same place: the same block or spin matrix at the same end (sink or source), or the same perambulator between the same two ends, in a correlator with the same number of operators. An input that is itself the result of an earlier step must be the same step.</li>
+        <li>the inputs are wired the same way: the same legs are summed and the same legs stay open. The internal names of the indices do not matter, and neither does which input comes first.</li>
+      </ul>
+      <p>The comparison is about how a step is built, never about its numbers. Two steps that give equal numbers for a physics reason, a symmetry for example, are still done twice. And because an input can be an earlier step, a step can only be shared if everything below it is shared too. What two networks share is always a piece built from the bottom up, the same inputs joined in the same way, though not necessarily the first steps of each order.</p>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 800 300" role="img" aria-label="Schematic. Two networks share the sink block B of t and the perambulators tau, and differ in the source block. On the left, both orders start with B of t times tau, so that product is made once and used by both networks: three steps. On the right, the second network starts with tau times its source block instead, so no step is shared: four steps.">
+            <defs>
+              <marker id="ah5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path class="mk" d="M0 0 L10 5 L0 10 z"/>
+              </marker>
+            </defs>
+            <line class="sep" x1="350" y1="10" x2="350" y2="292"/>
+            <text class="strong" x="170" y="22" text-anchor="middle">Same first step: shared</text>
+            <text class="strong" x="580" y="22" text-anchor="middle">Different first step: nothing shared</text>
+            <!-- left panel edges -->
+            <line class="edge" x1="50" y1="240" x2="76" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="122" y1="240" x2="98" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="96" y1="150" x2="160" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="112" y1="150" x2="258" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="194" y1="240" x2="180" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="266" y1="240" x2="282" y2="93" marker-end="url(#ah5)"/>
+            <!-- left panel nodes -->
+            <rect class="kern" x="20" y="240" width="60" height="30" rx="6"/>
+            <text x="50" y="260" text-anchor="middle">B(t)</text>
+            <rect class="box" x="92" y="240" width="60" height="30" rx="6"/>
+            <text x="122" y="260" text-anchor="middle">τ</text>
+            <rect class="kern" x="164" y="240" width="60" height="30" rx="6"/>
+            <text x="194" y="260" text-anchor="middle">B̄₁(0)</text>
+            <rect class="kern" x="236" y="240" width="60" height="30" rx="6"/>
+            <text x="266" y="260" text-anchor="middle">B̄₂(0)</text>
+            <rect class="key" x="48" y="150" width="76" height="30" rx="6"/>
+            <text class="strong" x="86" y="170" text-anchor="middle">B(t)·τ</text>
+            <text class="small" x="130" y="170">×2</text>
+            <rect class="box" x="125" y="60" width="90" height="30" rx="6"/>
+            <text x="170" y="80" text-anchor="middle">network 1</text>
+            <rect class="box" x="227" y="60" width="90" height="30" rx="6"/>
+            <text x="272" y="80" text-anchor="middle">network 2</text>
+            <text class="strong" x="170" y="290" text-anchor="middle">3 steps</text>
+            <!-- right panel edges -->
+            <line class="edge" x1="400" y1="240" x2="426" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="472" y1="240" x2="448" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="436" y1="150" x2="480" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="544" y1="240" x2="500" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="616" y1="240" x2="642" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="688" y1="240" x2="664" y2="183" marker-end="url(#ah5)"/>
+            <line class="edge" x1="652" y1="150" x2="696" y2="93" marker-end="url(#ah5)"/>
+            <line class="edge" x1="760" y1="240" x2="716" y2="93" marker-end="url(#ah5)"/>
+            <!-- right panel nodes -->
+            <rect class="kern" x="370" y="240" width="60" height="30" rx="6"/>
+            <text x="400" y="260" text-anchor="middle">B(t)</text>
+            <rect class="box" x="442" y="240" width="60" height="30" rx="6"/>
+            <text x="472" y="260" text-anchor="middle">τ</text>
+            <rect class="kern" x="514" y="240" width="60" height="30" rx="6"/>
+            <text x="544" y="260" text-anchor="middle">B̄₁(0)</text>
+            <rect class="box" x="586" y="240" width="60" height="30" rx="6"/>
+            <text x="616" y="260" text-anchor="middle">τ</text>
+            <rect class="kern" x="658" y="240" width="60" height="30" rx="6"/>
+            <text x="688" y="260" text-anchor="middle">B̄₂(0)</text>
+            <rect class="kern" x="730" y="240" width="60" height="30" rx="6"/>
+            <text x="760" y="260" text-anchor="middle">B(t)</text>
+            <rect class="box" x="398" y="150" width="76" height="30" rx="6"/>
+            <text x="436" y="170" text-anchor="middle">B(t)·τ</text>
+            <rect class="box" x="614" y="150" width="76" height="30" rx="6"/>
+            <text x="652" y="170" text-anchor="middle">τ·B̄₂(0)</text>
+            <rect class="box" x="445" y="60" width="90" height="30" rx="6"/>
+            <text x="490" y="80" text-anchor="middle">network 1</text>
+            <rect class="box" x="661" y="60" width="90" height="30" rx="6"/>
+            <text x="706" y="80" text-anchor="middle">network 2</text>
+            <text class="strong" x="580" y="290" text-anchor="middle">4 steps</text>
+          </svg>
+        </div>
+        <figcaption>A schematic of two networks in one row of a matrix: the same sink block B(t) and perambulators τ, different source blocks. If both orders start with B(t)·τ, that product is made once and used twice (left). If one order starts elsewhere, nothing is shared (right). Inputs are stored once in both cases; the right panel draws them twice only to keep the lines apart.</figcaption>
+      </figure>
+      <p>Each distinct step is done once, and its result goes to every network that needs it. The steps and the values passed between them form a second DAG, finer than the one in step 4. What this finds in real matrices, with the greedy order:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix</th><th>Networks</th><th>Steps, distinct</th><th>FLOPs, after sharing</th></tr></thead>
+          <tbody>
+            <tr><td>proton, 1 operator</td><td class="num">2</td><td class="num">18 → 15</td><td class="num">1.3 × 10⁹ → 1.3 × 10⁹</td></tr>
+            <tr><td>proton, local + displaced</td><td class="num">8</td><td class="num">72 → 31</td><td class="num">5.2 × 10⁹ → 3.8 × 10⁹</td></tr>
+            <tr><td>NN ¹S₀, 1 operator</td><td class="num">48</td><td class="num">1,008 → 260</td><td class="num">5.7 × 10¹⁰ → 3.8 × 10¹⁰</td></tr>
+            <tr><td>NN ¹S₀, 4 operators</td><td class="num">768</td><td class="num">16,128 → 3,671</td><td class="num">8.8 × 10¹¹ → 4.1 × 10¹¹</td></tr>
+            <tr><td>ππ I = 0, 5 operators</td><td class="num">1,276</td><td class="num">14,252 → 4,944</td><td class="num">1.1 × 10¹⁰ → 4.9 × 10⁹</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>This is where the NN matrix finally gets its sharing: with one operator, 70 of the 260 distinct steps are each used by several of its 48 networks. Steps fall by 2 to 4.5 times, FLOPs by 1.4 to 2.2 times. The single proton is the extreme case: its two networks share their first three steps, but those cost almost nothing.</p>
+    </div>
+
+    <div class="sub">
+      <h3>5e. Rows and columns: where the sharing comes from</h3>
+      <p>Every network of a matrix element C<sub>ij</sub> joins two halves through perambulators. The sink half belongs to operator i: its block at time t and its spin matrices. The source half belongs to operator j, at time 0. The perambulators are the same for the whole matrix. So where a step can be reused depends on which halves it contains.</p>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 800 250" role="img" aria-label="Left: one network of the matrix element C i j. A sink half with the block B i of t and its spin matrices is joined by three perambulators, two u and one d, to a source half with the block B bar j of 0. Steps that contain only the sink half can be reused along row i of the matrix, steps that contain only the source half along column j, and steps that contain both halves belong to C i j alone. Right: a four by four correlation matrix with row i and column j shaded; they cross at C i j.">
+            <text class="strong" x="220" y="22" text-anchor="middle">One network of Cᵢⱼ</text>
+            <text class="small" x="220" y="48" text-anchor="middle">perambulators</text>
+            <line class="lu" x1="160" y1="74" x2="280" y2="74"/>
+            <line class="ld" x1="160" y1="100" x2="280" y2="100"/>
+            <line class="lu" x1="160" y1="126" x2="280" y2="126"/>
+            <rect class="rowcell" x="30" y="56" width="130" height="88" rx="8"/>
+            <text class="strong" x="95" y="94" text-anchor="middle">Bᵢ(t)</text>
+            <text class="small" x="95" y="114" text-anchor="middle">and its Γ</text>
+            <rect class="colcell" x="280" y="56" width="130" height="88" rx="8"/>
+            <text class="strong" x="345" y="94" text-anchor="middle">B̄ⱼ(0)</text>
+            <text class="small" x="345" y="114" text-anchor="middle">and its Γ</text>
+            <text x="95" y="170" text-anchor="middle">sink half only:</text>
+            <text class="strong" x="95" y="188" text-anchor="middle">reused along row i</text>
+            <text x="220" y="170" text-anchor="middle">both halves:</text>
+            <text class="strong" x="220" y="188" text-anchor="middle">Cᵢⱼ only</text>
+            <text x="345" y="170" text-anchor="middle">source half only:</text>
+            <text class="strong" x="345" y="188" text-anchor="middle">reused along column j</text>
+            <text class="small" x="220" y="222" text-anchor="middle">Steps with neither block (spin matrices and perambulators)</text>
+            <text class="small" x="220" y="238" text-anchor="middle">can be reused anywhere the spin matrices match.</text>
+            <line class="sep" x1="470" y1="10" x2="470" y2="240"/>
+            <text class="strong" x="656" y="22" text-anchor="middle">The matrix</text>
+            <text class="small" x="680" y="44" text-anchor="middle">column j</text>
+            <rect class="box" x="560" y="52" width="48" height="36"/>
+            <rect class="box" x="608" y="52" width="48" height="36"/>
+            <rect class="colcell" x="656" y="52" width="48" height="36"/>
+            <rect class="box" x="704" y="52" width="48" height="36"/>
+            <rect class="rowcell" x="560" y="88" width="48" height="36"/>
+            <rect class="rowcell" x="608" y="88" width="48" height="36"/>
+            <rect class="rowcell" x="704" y="88" width="48" height="36"/>
+            <rect class="box" x="560" y="124" width="48" height="36"/>
+            <rect class="box" x="608" y="124" width="48" height="36"/>
+            <rect class="colcell" x="656" y="124" width="48" height="36"/>
+            <rect class="box" x="704" y="124" width="48" height="36"/>
+            <rect class="box" x="560" y="160" width="48" height="36"/>
+            <rect class="box" x="608" y="160" width="48" height="36"/>
+            <rect class="colcell" x="656" y="160" width="48" height="36"/>
+            <rect class="box" x="704" y="160" width="48" height="36"/>
+            <rect class="hit" x="656" y="88" width="48" height="36"/>
+            <text class="strong" x="680" y="111" text-anchor="middle">Cᵢⱼ</text>
+            <text class="small" x="552" y="110" text-anchor="end">row i</text>
+            <text class="small" x="656" y="218" text-anchor="middle">rows: sink operators</text>
+            <text class="small" x="656" y="234" text-anchor="middle">columns: source operators</text>
+          </svg>
+        </div>
+        <figcaption>Which part of the matrix can reuse a step depends only on which halves of the network the step contains.</figcaption>
+      </figure>
+      <p>Counting the distinct steps by who uses them, for the proton with 7 operators (one local, six displaced) and for ππ with 5 operators:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Used by</th><th>Steps</th><th>FLOPs done</th><th>FLOPs if each user did its own</th></tr></thead>
+          <tbody>
+            <tr class="group"><td colspan="4">Proton, 7 operators, greedy: 231 distinct steps, 3.3 × 10¹⁰ FLOPs</td></tr>
+            <tr><td>one network (both blocks)</td><td class="num">196</td><td class="num">2.8 × 10¹⁰</td><td class="num">same</td></tr>
+            <tr><td>one row (sink block only)</td><td class="num">28</td><td class="num">5.2 × 10⁹</td><td class="num">3.6 × 10¹⁰</td></tr>
+            <tr><td>several rows and columns (no block)</td><td class="num">7</td><td class="num">7.9 × 10⁵</td><td class="num">5.8 × 10⁷</td></tr>
+            <tr class="group"><td colspan="4">Proton, 7 operators, auto-hq: 330 distinct steps, 3.4 × 10⁹ FLOPs</td></tr>
+            <tr><td>one network (both blocks)</td><td class="num">294</td><td class="num">1.75 × 10⁹</td><td class="num">same</td></tr>
+            <tr><td>one column (source block only)</td><td class="num">28</td><td class="num">1.6 × 10⁹</td><td class="num">1.15 × 10¹⁰</td></tr>
+            <tr><td>several rows and columns (no block)</td><td class="num">8</td><td class="num">5.3 × 10⁵</td><td class="num">2.6 × 10⁷</td></tr>
+            <tr class="group"><td colspan="4">ππ I = 0, 5 operators, greedy: 4,944 distinct steps, 4.9 × 10⁹ FLOPs</td></tr>
+            <tr><td>one network</td><td class="num">4,315</td><td class="num">3.6 × 10⁹</td><td class="num">same</td></tr>
+            <tr><td>several networks of one matrix element</td><td class="num">231</td><td class="num">9.6 × 10⁸</td><td class="num">2.0 × 10⁹</td></tr>
+            <tr><td>one row</td><td class="num">220</td><td class="num">2.5 × 10⁸</td><td class="num">3.3 × 10⁹</td></tr>
+            <tr><td>one column</td><td class="num">164</td><td class="num">7.0 × 10⁷</td><td class="num">1.9 × 10⁹</td></tr>
+            <tr><td>several rows and columns</td><td class="num">14</td><td class="num">1.8 × 10⁶</td><td class="num">3.9 × 10⁷</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>In the proton all the useful sharing is one-sided. Greedy happens to build the expensive half from the sink block, so those products are made once per row and used by all 7 correlators in it. auto-hq builds from the source block and reuses along columns. A step that contains both blocks is never shared, not even between the two networks of one correlator.</p>
+      <p>A matrix of n operators has n rows but n² elements. As the matrix grows, the one-sided work grows like n and the joining work like n², so the joining steps decide the cost. Here auto-hq's joining steps cost 16 times less than greedy's (1.75 × 10⁹ against 2.8 × 10¹⁰). That, more than the sharing, is why it wins for baryons.</p>
+      <p>Mesons share more ways. A ππ matrix element has many Wick terms, and their networks have steps in common. Row and column sharing cuts the one-sided work from 5.2 × 10⁹ to 3.2 × 10⁸. Most of what remains, 3.6 × 10⁹ of 4.9 × 10⁹, is in steps that only one network uses.</p>
+    </div>
+
+    <div class="sub">
+      <h3>5f. Why the order and the sharing interact</h3>
+      <p>The order of each network is chosen without looking at the others, and the sharing is found afterwards; it never changes an order. So the cheapest order for each network does not always give the cheapest plan. FLOPs after sharing, per time slice:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix</th><th>Tensors per network</th><th>greedy</th><th>auto-hq</th><th>reuse-aware keeps</th></tr></thead>
+          <tbody>
+            <tr><td>proton, 1 operator</td><td class="num">10</td><td class="num">1.3 × 10⁹</td><td class="num">2.7 × 10⁸</td><td>dynamic-programming</td></tr>
+            <tr><td>proton, 7 operators</td><td class="num">10</td><td class="num">3.3 × 10¹⁰</td><td class="num">3.4 × 10⁹</td><td>dynamic-programming</td></tr>
+            <tr><td>σ (ππ, 1 operator)</td><td class="num">up to 6</td><td class="num">1.1 × 10⁶</td><td class="num">5.3 × 10⁵</td><td>dynamic-programming</td></tr>
+            <tr><td>ππ, 2 operators (zero momentum)</td><td class="num">up to 12</td><td class="num">8.7 × 10⁷</td><td class="num">1.05 × 10⁸</td><td>greedy</td></tr>
+            <tr><td>ππ, 5 operators</td><td class="num">up to 16</td><td class="num">4.9 × 10⁹</td><td class="num">6.5 × 10⁹</td><td>greedy (the only candidate)</td></tr>
+            <tr><td>NN ¹S₀, 1 operator</td><td class="num">22</td><td class="num">3.8 × 10¹⁰</td><td class="num">1.4–2.0 × 10¹⁰</td><td>greedy (the only candidate)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>For baryons auto-hq wins by 2 to 10 times, because, as in 5b, greedy sometimes leaves far too many indices open. For mesons it goes the other way. In ππ with 2 operators, greedy's orders are a little worse network by network (2.0 × 10⁸ against 1.8 × 10⁸ before sharing), but they share more, and after sharing auto-hq's plan needs 21% more FLOPs; with 5 operators, 32% more. reuse-aware exists to catch exactly this, but it only searches when every network has at most 12 tensors. For ππ with momenta, NN and anything larger it is the same as greedy.</p>
+      <p>Two things ConCorD does not do: it never changes a network's order to create more sharing, and reuse-aware uses one method for all networks instead of mixing them.</p>
+    </div>
+
+    <div class="note">
+      <div class="label">What to choose</div>
+      <p><strong>Baryons:</strong> auto-hq. In these examples it needs 2 to 10 times fewer FLOPs than greedy, and less memory. <strong>Mesons:</strong> greedy, or reuse-aware, which makes the comparison for you when the networks are small. To compare two methods on your own matrix, compile it with each and read both plans with <code>concord inspect</code> (step 7).</p>
+    </div>
+
+    <div class="note">
+      <div class="label">Still to come for these steps</div>
+      <p>The distinct steps describe one time slice, and nothing yet says in which order they run or where their results are kept. Step 6 puts them in an order of execution and decides when each result can be freed and which memory it goes into.</p>
+    </div>
+  </section>
+
+  <section id="step-6" aria-labelledby="h-step-6">
+    <div class="eyebrow">Step 6</div>
+    <h2 id="h-step-6">Scheduling and memory</h2>
+    <p>After step 5 ConCorD knows <em>what</em> to compute. Step 6 decides <em>in which order</em> and <em>where each result is kept</em>, so that the memory a run needs is known before it starts.</p>
+
+    <div class="sub">
+      <h3>6a. The complete to-do list</h3>
+      <p>Everything left to do is written as one more DAG, with four kinds of operations:</p>
+      <ul>
+        <li><strong>Get an input:</strong> read a perambulator, build a baryon or meson block, take a spin matrix.</li>
+        <li><strong>Do a contraction step</strong> from step 5.</li>
+        <li><strong>Form a Wick term:</strong> its coefficient times the product of its network results.</li>
+        <li><strong>Add the terms</strong> into each requested correlator.</li>
+      </ul>
+      <p>This DAG says only what depends on what. Because N_v is known, the size of every value in it is known exactly. For the proton at N_v = 32 the largest is a 134 MB intermediate (N_v³ × 4⁴ complex numbers) made by the greedy order. No schedule can make a single value smaller; only the contraction order of step 5 can.</p>
+    </div>
+
+    <div class="sub">
+      <h3>6b. The order of execution</h3>
+      <p>ConCorD turns the DAG into one list, a <strong>schedule</strong>. With the default strategy, <code>memory_aware</code>, it repeatedly looks at the steps whose inputs are ready and runs the one that frees the most memory: the one whose inputs have no other use left, minus the size of the result it creates. The alternatives are <code>critical_path</code> and <code>topological</code>.</p>
+      <p>The schedule gives every value a <strong>lifetime</strong>, from the step that makes it to the last step that uses it. After that it can be freed. The requested correlators are kept to the end.</p>
+    </div>
+
+    <div class="sub">
+      <h3>6c. Buffers</h3>
+      <p>Values whose lifetimes do not overlap can share the same piece of memory, a <strong>buffer</strong>. With the default, <code>best_fit</code>, each new value goes into the smallest free buffer that is big enough; if none is free, a new buffer is made. If that leaves too much unused space, ConCorD also tries packing all lifetimes at once and keeps the smaller result. The buffers together are the plan's memory requirement. You can set a hard limit (<code>compile.physical.memory_limit_bytes</code>); if the plan cannot fit, compiling fails with the smallest size it found.</p>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 720 316" role="img" aria-label="Schematic. Six values a to f are made over eight schedule steps. When every value is kept, six buffers are needed and most of them hold values that are no longer used. When each value is freed after its last use, a, c and e share buffer 1, and b, d and the result f share buffer 2, so two buffers are enough.">
+            <text class="small" x="20" y="30">schedule step</text>
+            <text x="150" y="30" text-anchor="middle">1</text><text x="218" y="30" text-anchor="middle">2</text>
+            <text x="286" y="30" text-anchor="middle">3</text><text x="354" y="30" text-anchor="middle">4</text>
+            <text x="422" y="30" text-anchor="middle">5</text><text x="490" y="30" text-anchor="middle">6</text>
+            <text x="558" y="30" text-anchor="middle">7</text><text x="626" y="30" text-anchor="middle">8</text>
+            <!-- panel A: keep everything -->
+            <text class="strong" x="20" y="72">Keep every</text>
+            <text class="strong" x="20" y="88">value:</text>
+            <text class="strong" x="20" y="104">6 buffers</text>
+            <rect class="bar" x="119" y="60" width="198" height="18" rx="3"/><rect class="bar-dead" x="323" y="60" width="334" height="18" rx="3"/>
+            <text x="129" y="73">a</text>
+            <rect class="bar" x="187" y="84" width="198" height="18" rx="3"/><rect class="bar-dead" x="391" y="84" width="266" height="18" rx="3"/>
+            <text x="197" y="97">b</text>
+            <rect class="bar" x="323" y="108" width="198" height="18" rx="3"/><rect class="bar-dead" x="527" y="108" width="130" height="18" rx="3"/>
+            <text x="333" y="121">c</text>
+            <rect class="bar" x="391" y="132" width="198" height="18" rx="3"/><rect class="bar-dead" x="595" y="132" width="62" height="18" rx="3"/>
+            <text x="401" y="145">d</text>
+            <rect class="bar" x="527" y="156" width="130" height="18" rx="3"/>
+            <text x="537" y="169">e</text>
+            <rect class="bar-out" x="595" y="180" width="62" height="18" rx="3"/>
+            <text x="605" y="193">f</text>
+            <line class="sep" x1="20" y1="212" x2="700" y2="212"/>
+            <!-- panel B: reuse -->
+            <text class="strong" x="20" y="236">Free after</text>
+            <text class="strong" x="20" y="252">last use:</text>
+            <text class="strong" x="20" y="268">2 buffers</text>
+            <rect class="bar" x="119" y="228" width="198" height="18" rx="3"/><text x="129" y="241">a</text>
+            <rect class="bar" x="323" y="228" width="198" height="18" rx="3"/><text x="333" y="241">c</text>
+            <rect class="bar" x="527" y="228" width="130" height="18" rx="3"/><text x="537" y="241">e</text>
+            <rect class="bar" x="187" y="252" width="198" height="18" rx="3"/><text x="197" y="265">b</text>
+            <rect class="bar" x="391" y="252" width="198" height="18" rx="3"/><text x="401" y="265">d</text>
+            <rect class="bar-out" x="595" y="252" width="62" height="18" rx="3"/><text x="605" y="265">f</text>
+            <text class="small" x="668" y="241">buffer 1</text>
+            <text class="small" x="668" y="265">buffer 2</text>
+            <!-- legend -->
+            <rect class="bar" x="119" y="292" width="22" height="12" rx="2"/><text class="small" x="147" y="302">in use</text>
+            <rect class="bar-dead" x="215" y="292" width="22" height="12" rx="2"/><text class="small" x="243" y="302">kept but no longer needed</text>
+            <rect class="bar-out" x="420" y="292" width="22" height="12" rx="2"/><text class="small" x="448" y="302">requested result, kept to the end</text>
+          </svg>
+        </div>
+        <figcaption>A schematic of six values made over eight steps of a schedule. Keeping every value needs six buffers (top). Freeing each value after its last use lets later values move into its buffer, so two are enough (bottom). In real plans the values have different sizes, and each new value goes into the smallest free buffer that fits.</figcaption>
+      </figure>
+    </div>
+
+    <div class="sub">
+      <h3>What this saves</h3>
+      <p>Per time slice at N_v = 32, with the greedy order:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix</th><th>Values</th><th>Keep every value</th><th>Most held at once</th><th>Buffers in total</th></tr></thead>
+          <tbody>
+            <tr><td>proton, 1 operator</td><td class="num">25</td><td class="num">0.17 GB</td><td class="num">0.14 GB</td><td class="num">0.15 GB</td></tr>
+            <tr><td>NN ¹S₀, 1 operator</td><td class="num">316</td><td class="num">3.1 GB</td><td class="num">0.45 GB</td><td class="num">0.50 GB</td></tr>
+            <tr><td>NN ¹S₀, 4 operators</td><td class="num">4,474</td><td class="num">24.6 GB</td><td class="num">0.84 GB</td><td class="num">1.45 GB</td></tr>
+            <tr><td>ππ I = 0, 5 operators</td><td class="num">8,032</td><td class="num">0.34 GB</td><td class="num">0.09 GB</td><td class="num">0.09 GB</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>For the full matrices at N_v = 64 the effect is large: keeping every value of the 17-operator NN ¹S₀ plan would take 2,379 GB; the scheduled buffers need 51 GB. The buffers can add up to more than the most held at once (1.45 against 0.84 GB above), because buffers of different sizes do not always fit together.</p>
+    </div>
+
+    <div class="note">
+      <div class="label">The plan is now complete</div>
+      <p>Everything that can be decided without data has been decided: the inputs, the distinct steps, their order, every value's size and buffer, and the total memory, all for one time slice. Running several time slices at once multiplies the memory by that number; that choice is made when running, in step 8. Step 7 is about what is saved in the plan file and what <code>concord inspect</code> shows from it.</p>
+    </div>
+  </section>
+
+  <section id="step-7" aria-labelledby="h-step-7">
+    <div class="eyebrow">Step 7</div>
+    <h2 id="h-step-7">The plan file and <code>concord inspect</code></h2>
+    <p>Everything decided in steps 2 to 6 is saved in one file, the <strong>plan</strong>, with the ending <code>.concord</code>. It describes the whole computation for one time slice and does not depend on the data, the lattice size, the times or the machine.</p>
+
+    <div class="sub">
+      <h3>What is inside</h3>
+      <p>The plan file is a ZIP archive holding three files:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>What it holds</th></tr></thead>
+          <tbody>
+            <tr><td><code>manifest.json</code></td><td>A label: job name, date, ConCorD version, the version number of the compiler rules, and fingerprints of everything the plan was made from: the operators file and the function in it, any local Python files it imports, the operator parameters and the compile settings. It also holds a fingerprint of <code>plan.json</code>.</td></tr>
+            <tr><td><code>plan.json</code></td><td>The plan itself: the DAG of step 4, the orders and shared steps of step 5, and the to-do list, sizes, schedule and buffers of step 6, with the compile settings and, if Wick merging is on, its proof.</td></tr>
+            <tr><td><code>diagnostics.json</code></td><td>Summary counts from each stage, kept for reference. <code>concord inspect</code> recomputes its report from <code>plan.json</code> and takes only the number of Wick terms before combining from here.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The plan of the proton example in <code>examples/proton/</code>, compiled with N_v = 64, is 191 kB of text, 16 kB compressed. Large matrices give large plans: the 14-operator Nπ plan at N_v = 32 is 270 MB of text.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Three checks each time a plan is used</h3>
+      <ul>
+        <li><strong>Is the file intact?</strong> The fingerprint of <code>plan.json</code> must match the one in the manifest. A damaged or hand-edited file is refused.</li>
+        <li><strong>Was it made for this job?</strong> ConCorD recomputes the fingerprints from your current operators file, its local helper files, the function name, the parameters and the compile settings (including whether the built-in eigenvector reader is used), and checks that the plan was made under the same compiler rules, a version number stored in the manifest. If any of them changed since compiling, the plan is <em>stale</em> and ConCorD asks you to recompile. Changing data paths, configurations, times, the lattice size or the device never makes a plan stale.</li>
+        <li><strong>Is it consistent?</strong> The plan's internal records are checked against each other before running.</li>
+      </ul>
+      <p><code>concord inspect</code> has no job file, so it makes only the first and third checks.</p>
+    </div>
+
+    <div class="sub">
+      <h3>Reading a plan: <code>concord inspect</code></h3>
+      <p><code>concord inspect</code> reads only the plan, never lattice data, so you can see the cost of a calculation before any data exist. Real output for the same proton example at N_v = 64, shortened, with the step of this guide that each line comes from. It is projected to positive parity, so each of its networks has two more spin matrices than the proton of steps 3 to 5:</p>
+<pre><code>ConCorD execution plan
+  Distillation Nv:  64
+  Spin basis:       DR
+  Contraction:      greedy
+  Resources:
+    kernel          2                  <span class="c">← baryon blocks (step 3)</span>
+    spin            5                  <span class="c">← spin matrices (step 3)</span>
+    propagation     2                  <span class="c">← one perambulator per flavor (step 4)</span>
+  Execution:
+    physical steps  29                 <span class="c">← the schedule (step 6)</span>
+    buffers         16
+    peak active     1.07 GiB
+    total capacity  1.14 GiB           <span class="c">← memory per time slice (step 6)</span>
+  Analytical costs:
+    Wick terms      2/2 surviving      <span class="c">← steps 2 and 4</span>
+    components      2/2 unique         <span class="c">← distinct networks (step 4)</span>
+    intermediates   17/22 unique       <span class="c">← shared steps (step 5)</span>
+    est. FLOPs      20,944,257,280 scheduled</code></pre>
+      <p>With <code>--hardware</code> it also compares the plan with the machine it runs on:</p>
+<pre><code>  Buffer pool:       1.14 GiB
+  Largest transient: 1.00 GiB          <span class="c">← one extra copy of the largest value</span>
+  Known working set: 2.14 GiB
+  Safe device limit: 160.25 GiB        <span class="c">← free memory of one machine at one moment, minus a 20 % reserve</span></code></pre>
+      <p>Most steps first make their result as a new tensor and then copy it into its buffer (plain matrix products write straight into it), so one extra copy of the largest value is counted. Other options list the inputs (<code>--resources</code>), the schedule (<code>--schedule</code>) and the buffers (<code>--buffers</code>). Two related commands: <code>concord hardware</code> shows what this machine has, and <code>concord visualize job.yaml</code> writes a self-contained web page that shows your operators and correlators as formulas and, once the plan exists, its tensor networks as an interactive diagram.</p>
+    </div>
+
+    <div class="note">
+      <div class="label">Still to come</div>
+      <p>The plan is fixed; only the numbers are missing. Step 8 follows <code>concord run</code>: reading the eigenvectors and perambulators, building the blocks, choosing how many time slices and workers to use, running the schedule and writing the correlators.</p>
+    </div>
+  </section>
+
+  <section id="step-8" aria-labelledby="h-step-8">
+    <div class="eyebrow">Step 8</div>
+    <h2 id="h-step-8">The run: data, blocks, contraction</h2>
+    <p><code>concord run</code> takes the plan and the data and fills in the numbers. The work is a grid of <strong>work units</strong>: one gauge configuration with one set of operator times. For example, 10 configurations with one source time and 64 sink times make 640 work units. Every work unit is exactly the plan of step 6, with different data.</p>
+
+    <div class="sub">
+      <h3>8a. Before any contraction</h3>
+      <ul>
+        <li><strong>Load and check the plan</strong>, as in step 7. If the plan file does not exist yet, <code>concord run</code> compiles it first. A stale plan is refused unless you pass <code>--replan</code>.</li>
+        <li><strong>Choose the device:</strong> the one named in the job file, the CPU by default. With <code>device: auto</code>, ConCorD takes a GPU if the plan fits in its memory. If not, it can still use the GPU, keeping the values in the node's memory and contracting them on the GPU in pieces. Only if that is not possible either does it use the CPU.</li>
+        <li><strong>Choose how many time slices to run together</strong> (the time batch). By default ConCorD times a few batch sizes on made-up data and keeps the fastest that fits. Memory grows with the batch size.</li>
+        <li><strong>Choose workers and threads.</strong> By default this follows from the plan: one thread per worker when the fixed cost per step dominates, as for two-meson matrices at N_v = 32; four when the arithmetic dominates, as for baryons. If fewer workers can start than the cores allow, they share the spare cores. There are never more workers than work units or than fit in memory, and small jobs run in one process. A worker needs some memory beyond its plan's buffers. When a rough allowance for it, 3 GiB per worker, does not fit all the workers, fewer workers first run one work unit each and measure what they use, and the remaining work units are split again from that measurement.</li>
+        <li><strong>Open the output file</strong> and skip every work unit already marked done, so a stopped run continues where it left off.</li>
+      </ul>
+    </div>
+
+    <div class="sub">
+      <h3>8b. For each configuration</h3>
+      <figure>
+        <div class="scroll">
+          <svg viewBox="0 0 800 264" role="img" aria-label="One configuration in a run. Eigenvectors are read and turned into blocks by summing over space and color. Perambulators for the current batch of time slices are read, with the next batch read in the background. Blocks and perambulators go into the plan's schedule, which runs on several time slices at once. The correlator values are written to the results file and the work units marked done. This repeats for the next batch and the next configuration.">
+            <defs>
+              <marker id="ah8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+              </marker>
+            </defs>
+            <rect class="box" x="20" y="30" width="150" height="46" rx="8"/>
+            <text class="strong" x="95" y="50" text-anchor="middle">eigenvectors V</text>
+            <text class="small" x="95" y="66" text-anchor="middle">file, per time slice</text>
+            <rect class="box" x="20" y="160" width="150" height="46" rx="8"/>
+            <text class="strong" x="95" y="180" text-anchor="middle">perambulators τ</text>
+            <text class="small" x="95" y="196" text-anchor="middle">file, per flavor</text>
+            <line class="arrow" x1="170" y1="53" x2="227" y2="53" marker-end="url(#ah8)"/>
+            <text class="small" x="199" y="45" text-anchor="middle">V(t)</text>
+            <line class="arrow" x1="170" y1="183" x2="227" y2="183" marker-end="url(#ah8)"/>
+            <text class="small" x="199" y="175" text-anchor="middle">τ(t′, t)</text>
+            <rect class="kern" x="230" y="30" width="180" height="46" rx="8"/>
+            <text class="strong" x="320" y="50" text-anchor="middle">build blocks</text>
+            <text class="small" x="320" y="66" text-anchor="middle">sum over space and color</text>
+            <rect class="box" x="230" y="160" width="180" height="46" rx="8"/>
+            <text class="strong" x="320" y="180" text-anchor="middle">read τ for this batch</text>
+            <text class="small" x="320" y="196" text-anchor="middle">next batch read meanwhile</text>
+            <line class="arrow" x1="410" y1="60" x2="467" y2="100" marker-end="url(#ah8)"/>
+            <text class="small" x="446" y="70" text-anchor="middle">blocks</text>
+            <line class="arrow" x1="410" y1="176" x2="467" y2="136" marker-end="url(#ah8)"/>
+            <text class="small" x="446" y="172" text-anchor="middle">τ</text>
+            <rect class="key" x="470" y="90" width="170" height="56" rx="8"/>
+            <text class="strong" x="555" y="113" text-anchor="middle">run the schedule</text>
+            <text class="small" x="555" y="131" text-anchor="middle">on B time slices at once</text>
+            <line class="arrow" x1="640" y1="118" x2="677" y2="118" marker-end="url(#ah8)"/>
+            <text class="small" x="658" y="110" text-anchor="middle">values</text>
+            <rect class="box" x="680" y="95" width="110" height="46" rx="8"/>
+            <text class="strong" x="735" y="115" text-anchor="middle">results.h5</text>
+            <text class="small" x="735" y="131" text-anchor="middle">+ done flags</text>
+            <path class="arrow" d="M735 141 L735 236 L95 236 L95 209" marker-end="url(#ah8)"/>
+            <text class="small" x="415" y="254" text-anchor="middle">repeat for the next batch, then the next configuration</text>
+          </svg>
+        </div>
+        <figcaption>One configuration in a run. Building the blocks is the one place where the lattice volume enters: each block is a sum over all spatial sites. Inputs that several work units need, such as the source block that every sink time uses, are kept in memory and reused as far as memory allows. Blocks can also be saved to disk (<code>data.kernel_cache</code>) for later runs.</figcaption>
+      </figure>
+      <p>Running B time slices together gives every tensor an extra index for the time slice. That index is never summed over, so different time slices never mix; they only share each step's fixed cost.</p>
+    </div>
+
+    <div class="sub">
+      <h3>8c. Workers</h3>
+      <p>On a CPU node the pending work units are split over several worker processes. The parent process loads the plan once and the workers share it, so memory is not spent on many copies. Only the parent writes the output file. Measured with ConCorD 1.0 on one 64-core node at N_v = 32, for one configuration, one source time t0 and the 63 sink times t ≠ t0, the automatic choice ran:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrix</th><th>Workers × threads</th><th>Time slices per hour</th><th>What limits it</th></tr></thead>
+          <tbody>
+            <tr><td>bb ū d̄, 39 operators</td><td class="num">63 × 1</td><td class="num">≈ 6,400</td><td>fixed cost per step</td></tr>
+            <tr><td>Nπ, 26 operators</td><td class="num">16 × 4</td><td class="num">≈ 100</td><td>arithmetic</td></tr>
+            <tr><td>NN ¹S₀, 17 operators</td><td class="num">16 × 4</td><td class="num">≈ 155</td><td>arithmetic</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>For the 18-operator ππ matrix the memory was measured first: 47 workers ran one time slice each with one thread and used 2.5 GiB each, and the remaining time slices were split again.</p>
+    </div>
+
+    <div class="sub">
+      <h3>8d. The output file</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>In <code>results.h5</code></th><th>What it holds</th></tr></thead>
+          <tbody>
+            <tr><td><code>correlators/…/values</code></td><td>One array per correlator: configuration × time setting × the correlator's open indices, for example 4 × 4 for a proton with open spin.</td></tr>
+            <tr><td><code>completed</code></td><td>A done flag for every work unit.</td></tr>
+            <tr><td>metadata</td><td>The job name, the plan's manifest, the run, lattice and data settings, the grid of configurations and times, and one fingerprint of the plan, the lattice, the grid and the data settings (file names and layout, not the file contents).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>By default a second run on the same output file resumes. It refuses if the plan, the data settings, the lattice or the grid changed, because that would mix different calculations in one file. With <code>--run-record</code> or <code>--report</code>, a run also records where its time went: loading the plan, managing the output file, choosing settings, reading and building inputs, waiting for inputs, contracting, writing, and the rest. The terminal shows the total time.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-recap">
+    <div class="eyebrow">Recap</div>
+    <h2 id="h-recap">The whole path</h2>
+    <ol>
+      <li><strong>Input.</strong> Operators in Python, settings and data locations in a job file.</li>
+      <li><strong>Wick terms.</strong> Sums are multiplied out and every quark is paired with an antiquark of the same flavor, with signs.</li>
+      <li><strong>Tensor networks.</strong> Each term becomes blocks, perambulators and spin matrices joined by indices.</li>
+      <li><strong>The DAG.</strong> Identical inputs, connected networks and whole terms are kept once; cancelling terms disappear.</li>
+      <li><strong>Steps.</strong> Each network gets a pairwise order; identical steps across networks are done once, and a step that uses only one half of a network serves a whole row or column of the matrix.</li>
+      <li><strong>Schedule and memory.</strong> The steps get a running order, every value a lifetime and a buffer, and the plan a memory figure.</li>
+      <li><strong>The plan file.</strong> All of this is saved, fingerprinted and readable with <code>concord inspect</code> before any data exist.</li>
+      <li><strong>The run.</strong> Blocks are built from the eigenvectors, perambulators are read, and the schedule runs on batches of time slices across workers, writing and marking each result.</li>
+    </ol>
+  </section>
+
+  <p class="foot">This guide describes ConCorD 1.0.0. The example matrices are the operator bases of the performance study in the ConCorD paper (two-pion, nucleon-pion, two-nucleon and bb ū d̄ systems, and the triton); the counts, costs and memory sizes on this page come from running ConCorD's compile stages on those sets, and the times were measured on one 64-core CPU node. They illustrate the scale and will differ for other operators and machines.</p>
+</main>
+</body>
+</html>

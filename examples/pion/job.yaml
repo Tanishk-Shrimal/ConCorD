@@ -1,0 +1,60 @@
+# Two-point correlator of the local pion (pi+) at zero momentum.
+# The data are random (see tools/make_random_laph_data.py), so the numbers mean nothing; the job shows
+# the workflow. Create the data once, from the repository root:
+#   python tools/make_random_laph_data.py --output-dir examples/data
+# then, in this directory:
+#   concord plan job.yaml && concord inspect plan.concord && concord run job.yaml
+schema_version: 1
+
+job:
+  name: example_pion
+  description: pi+ two-point correlator on random 4^3 x 8 data with N_v = 8.
+
+operators:
+  file: ./operators.py
+  factory: build
+
+plan:
+  file: ./plan.concord
+
+lattice:
+  spatial_extent: [4, 4, 4]
+  temporal_extent: 8
+
+compile:
+  mode_size: 8
+  spin_basis: DR          # must match the gamma basis of your perambulators (DR or DP)
+  scalar_type: complex128
+  contraction:
+    strategy: greedy
+
+run:
+  device: cpu
+  configurations:
+    values: [1]
+  times:
+    generator:
+      type: two_point
+      source: 0
+      sinks:
+        range: {start: 0, stop: 8, step: 1}
+
+data:
+  eigenvectors:
+    provider: hdf5_distillation
+    path: ../data/eigenvectors.h5
+    dataset: /eigenvectors
+    axes: [time, z, y, x, color, mode]
+  propagation:
+    provider: hdf5_perambulator
+    ordinary:
+      files:
+        u: ../data/perambulator_u.h5
+        d: ../data/perambulator_d.h5
+      dataset: /perambulators/src_t_{source_time}/data
+      source_field: qdagger
+      axes: [sink_time, source_spin, sink_spin, source_mode, sink_mode]
+
+output:
+  file: ./output_pion.h5
+  on_existing: overwrite

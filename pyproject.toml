@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "concord-lqcd"
+version = "1.0.0"
+description = "Symbolic compiler for lattice QCD correlation functions"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tanishk Shrimal" }, { name = "M. Padmanath" }]
+keywords = ["lattice-qcd", "correlation-functions", "distillation", "wick-contractions"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.0",
+    "h5py>=3.8",
+    "opt-einsum>=3.3",
+    "networkx>=3.2",
+    "pydantic>=2,<3",
+    "PyYAML>=6",
+    "typer>=0.12,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+release = [
+    "build>=1.2",
+    "twine>=5",
+]
+
+[project.scripts]
+concord = "concord_lqcd.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Tanishk-Shrimal/ConCorD"
+Repository = "https://github.com/Tanishk-Shrimal/ConCorD"
+Issues = "https://github.com/Tanishk-Shrimal/ConCorD/issues"
+
+[tool.setuptools.packages.find]
+include = ["concord_lqcd*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v"
