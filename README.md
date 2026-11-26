@@ -46,8 +46,9 @@ API without a job file.
 
 - [`docs/user_guide.md`](docs/user_guide.md): writing and running jobs, the conventions, what has
   been checked against other codes, and the current limitations.
-- [`docs/inside_concord.html`](docs/inside_concord.html): a step-by-step explanation of what
-  happens between the operators and the correlation matrix; open it in a browser.
+- [Inside ConCorD](https://tanishk-shrimal.github.io/ConCorD/inside_concord.html): a step-by-step
+  explanation of what happens between the operators and the correlation matrix (the page is
+  `docs/inside_concord.html`).
 
 ## Tests
 
